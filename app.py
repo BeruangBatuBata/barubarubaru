@@ -1,5 +1,3 @@
-# In app.py
-
 import streamlit as st
 from collections import OrderedDict
 from utils.data_processing import parse_matches
@@ -59,8 +57,6 @@ with st.sidebar:
             cleared_count = clear_cache_for_live_tournaments(live_tournaments_selected)
             st.success(f"Cleared cache for {cleared_count} live tournament(s). Click 'Load Data' to refresh.")
     
-    ### --- ADDED --- ###
-    # This button allows re-training the model.
     st.markdown("---")
     st.subheader("Admin")
     if st.button("Train AI Model"):
@@ -74,7 +70,6 @@ with st.sidebar:
                 st.success(feedback)
         else:
             st.warning("Please load tournament data before training the model.")
-    ### --- END ADDED --- ###
 
 
 if st.session_state.get('parsed_matches'):
