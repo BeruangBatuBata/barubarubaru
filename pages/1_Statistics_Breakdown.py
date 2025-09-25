@@ -12,7 +12,6 @@ if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matc
     st.stop()
 
 # --- Cache the calculation ---
-# This prevents re-calculating the entire dataframe every time a widget is changed.
 @st.cache_data
 def get_stats_df(pooled_matches, team_filter):
     return calculate_hero_stats_for_team(pooled_matches, team_filter)
@@ -20,13 +19,21 @@ def get_stats_df(pooled_matches, team_filter):
 # --- UI Controls ---
 pooled_matches = st.session_state['pooled_matches']
 
-# Get a unique, sorted list of all teams from the data
+### --- MODIFIED --- ###
+# First, find all matches that have at least one completed game
+played_matches = [
+    match for match in pooled_matches 
+    if any(game.get("winner") for game in match.get("match2games", []))
+]
+
+# Now, build the team list ONLY from those played matches
 all_teams = sorted(list(set(
     opp.get('name','').strip()
-    for match in pooled_matches
+    for match in played_matches  # Use played_matches here
     for opp in match.get("match2opponents", [])
     if opp.get('name')
 )))
+### --- END MODIFIED --- ###
 
 # --- Sidebar for page-specific filters ---
 st.sidebar.header("Statistics Filters")
@@ -39,20 +46,18 @@ selected_team = st.sidebar.selectbox(
 # --- Main Page Content ---
 st.info(f"Displaying hero statistics for **{selected_team}** in the selected tournaments: **{', '.join(st.session_state['selected_tournaments'])}**")
 
-# Calculate or retrieve cached stats
 with st.spinner(f"Calculating stats for {selected_team}..."):
     df_stats = get_stats_df(pooled_matches, selected_team)
 
 if df_stats.empty:
     st.warning(f"No match data found for '{selected_team}' in the selected tournaments.")
 else:
-    # --- Sorting and Display Controls ---
     col1, col2, col3 = st.columns(3)
     with col1:
         sort_column = st.selectbox(
             "Sort by:",
             options=df_stats.columns,
-            index=list(df_stats.columns).index("Presence (%)") # Default sort
+            index=list(df_stats.columns).index("Presence (%)")
         )
     with col2:
         sort_order = st.radio(
@@ -61,16 +66,13 @@ else:
             horizontal=True
         )
 
-   # Sort the DataFrame
     df_display = df_stats.sort_values(
         by=sort_column,
         ascending=(sort_order == "Ascending")
     ).reset_index(drop=True)
     
-    # --- ADD THIS LINE ---
     df_display.index += 1
     
-    # --- Display Table and Download Button ---
     st.dataframe(df_display, use_container_width=True)
 
     csv = df_display.to_csv(index=False).encode('utf-8')
