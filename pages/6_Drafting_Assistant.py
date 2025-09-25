@@ -1,6 +1,8 @@
 import streamlit as st
 from collections import defaultdict
+### --- MODIFIED --- ###
 from utils.drafting_ai import load_prediction_assets, predict_draft_outcome, get_ai_suggestions, generate_prediction_explanation, calculate_series_score_probs
+### --- END MODIFIED --- ###
 from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
 
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
@@ -91,9 +93,7 @@ suggestion_placeholder = st.empty()
 c1, c2, c3 = st.columns([2, 2, 1])
 draft['blue_team'] = c1.selectbox("Blue Team:", ALL_TEAMS, key='blue_team_select', index=ALL_TEAMS.index(draft['blue_team']) if draft['blue_team'] in ALL_TEAMS else 0)
 draft['red_team'] = c2.selectbox("Red Team:", ALL_TEAMS, key='red_team_select', index=ALL_TEAMS.index(draft['red_team']) if draft['red_team'] in ALL_TEAMS else 0)
-### --- ADDED --- ###
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
-### --- END ADDED --- ###
 
 blue_col, red_col = st.columns(2)
 taken_heroes = {v for k, v in draft['blue_picks'].items() if v} | {v for k, v in draft['red_picks'].items() if v} | {v for v in draft['blue_bans'] if v} | {v for v in draft['red_bans'] if v}
@@ -135,8 +135,7 @@ with prob_placeholder.container():
     st.subheader("Live Win Probability")
     generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
-
-    ### --- ADDED --- ###
+    
     series_probs = calculate_series_score_probs(prob_overall, series_format)
     if series_probs:
         st.write(f"**Best-of-{series_format} Series Score Probability**")
@@ -144,7 +143,6 @@ with prob_placeholder.container():
         for score, probability in series_probs.items():
             prob_text += f"- **{score}:** {probability:.1%}\n"
         st.markdown(prob_text)
-    ### --- END ADDED --- ###
 
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
