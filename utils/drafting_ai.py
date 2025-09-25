@@ -1,11 +1,26 @@
 # In utils/drafting_ai.py
 
+import streamlit as st
 import pandas as pd
 import numpy as np
 import xgboost as xgb
 import joblib
 from collections import defaultdict
 import itertools
+import math
+
+@st.cache_resource
+def load_prediction_assets(model_path='draft_predictor.joblib'):
+    """
+    Loads the trained model and associated assets from the .joblib file.
+    This function is cached to run only once per session.
+    """
+    try:
+        assets = joblib.load(model_path)
+        return assets
+    except FileNotFoundError:
+        st.error(f"Model file not found at '{model_path}'. Please ensure it is in the project's root directory.")
+        return None
 
 # --- Helper function to get all hero names ---
 def get_all_hero_names(HERO_PROFILES):
