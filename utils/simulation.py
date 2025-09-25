@@ -64,7 +64,7 @@ def save_tournament_format(tournament_name, format_choice):
     except Exception:
         return False
 
-# --- GROUP CONFIGURATION FUNCTIONS (The Missing Piece) ---
+# --- GROUP CONFIGURATION FUNCTIONS ---
 def get_group_cache_key(tournament_name):
     """Generate a unique filename for a tournament's group config."""
     return f".group_config_{tournament_name.replace(' ', '_')}.json"
@@ -151,30 +151,21 @@ def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_match
     return pd.DataFrame(rows).round(2)
 
 def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
-    """
-    Corrected simulation for group stage tournaments.
-    This version ranks teams WITHIN their groups before applying brackets.
-    """
     teams = [t for g_teams in groups.values() for t in g_teams]
     finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
-
     for _ in range(n_sim):
         sim_wins = defaultdict(int, current_wins)
         sim_diff = defaultdict(int, current_diff)
-
         for a, b, dt, bo in unplayed_matches:
             code = forced_outcomes.get((a, b, dt), "random")
             outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
             if outcome == "DRAW": continue
-            
             winner, loser = (a, b) if outcome.startswith("A") else (b, a)
             num = outcome[1:]
             w, l = (int(num[0]), int(num[1])) if len(num) == 2 else (int(num), 0)
-            
             sim_wins[winner] += 1
             sim_diff[winner] += w - l
             sim_diff[loser] += l - w
-        
         for group_name, group_teams in groups.items():
             ranked_in_group = sorted(group_teams, key=lambda t: (sim_wins[t], sim_diff[t], random.random()), reverse=True)
             for pos, team in enumerate(ranked_in_group):
@@ -185,9 +176,9 @@ def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplay
                     if start <= rank_in_group <= end:
                         finish_counter[team][bracket["name"]] += 1
                         break
-    
-    # --- THIS IS THE CORRECTED SECTION ---
-    prob_data = [] # The list is correctly named 'prob_data'
+    ### --- MODIFIED --- ###
+    # This was the source of the KeyError. Fixed the variable name from `rows` to `prob_data`.
+    prob_data = []
     for t in teams:
         row = {"Team": t}
         for g_name, g_teams in groups.items():
@@ -196,7 +187,6 @@ def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplay
                 break
         for bracket in brackets:
             row[f"{bracket['name']} (%)"] = (finish_counter[t][bracket["name"]] / n_sim) * 100
-        prob_data.append(row) # We correctly append to 'prob_data'
-        
-    return pd.DataFrame(prob_data).round(2) # We correctly use 'prob_data' to create the DataFrame
-    # --- END OF CORRECTION ---
+        prob_data.append(row)
+    return pd.DataFrame(prob_data).round(2)
+    ### --- END MODIFIED --- ###
