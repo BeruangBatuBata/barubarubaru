@@ -5,7 +5,7 @@ import xgboost as xgb
 import json
 import joblib
 from collections import defaultdict
-import io # Required for in-memory files
+import io
 
 # --- MODEL LOADING (FOR PREDICTION) ---
 @st.cache_resource
@@ -18,15 +18,12 @@ def load_prediction_assets(model_path='draft_predictor.json', assets_path='draft
         assets['model'] = model
         return assets
     except FileNotFoundError:
-        # This is expected if the files haven't been created yet.
-        # We'll handle the user message on the page itself.
         return None
 
 ### --- MODIFIED: MODEL TRAINING FUNCTION --- ###
-def train_and_save_prediction_model(matches, hero_profiles):
+def train_and_save_prediction_model(matches, hero_profiles, model_filename='draft_predictor.json', assets_filename='draft_assets.json'):
     """
-    Trains an XGBoost model and returns the model and assets as in-memory objects
-    for downloading, instead of saving directly to files.
+    Trains an XGBoost model and saves it and its assets directly to the specified file paths.
     """
     # (The entire logic for collecting data and training the model is identical)
     all_heroes = sorted(list(set(p['champion'] for m in matches for g in m.get('match2games', []) for o in g.get('opponents', []) for p in o.get('players', []) if 'champion' in p)))
@@ -47,7 +44,7 @@ def train_and_save_prediction_model(matches, hero_profiles):
         if len(match_teams) != 2 or not all(t in feature_to_idx for t in match_teams): continue
         for game in match.get('match2games', []):
             extradata = game.get('extradata', {})
-            if len(game.get('opponents', [])) != 2 or game.get('winner') not in ['1', '2'] or not extradata: continue
+            if len(game.get('opponents', []) != 2 or game.get('winner') not in ['1', '2'] or not extradata: continue
             vector = np.zeros(len(feature_list))
             blue_picks_list, red_picks_list = [], []
             for i, role in enumerate(roles, 1):
@@ -80,24 +77,20 @@ def train_and_save_prediction_model(matches, hero_profiles):
             y.append(1 if game['winner'] == '1' else 0)
     if not X:
         raise ValueError("Could not generate any training samples.")
-    
+
     model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss', n_estimators=200, max_depth=6, learning_rate=0.05, colsample_bytree=0.8)
     model.fit(np.array(X), np.array(y))
-    
-    # --- NEW SAVING LOGIC ---
-    # 1. Save the model to an in-memory byte buffer
-    buffer = io.BytesIO()
-    model.save_model(buffer)
-    model_data = buffer.getvalue()
-    
-    # 2. Create the assets dictionary and convert to a JSON string
+
+    # --- SAVING LOGIC ---
+    model.save_model(model_filename)
     model_assets = {
-        'feature_to_idx': feature_to_idx, 'roles': roles, 'all_heroes': all_heroes, 
+        'feature_to_idx': feature_to_idx, 'roles': roles, 'all_heroes': all_heroes,
         'all_tags': all_tags, 'all_teams': all_teams
     }
-    assets_data = json.dumps(model_assets, indent=4)
-    
-    return model_data, assets_data
+    with open(assets_filename, 'w') as f:
+        json.dump(model_assets, f)
+
+    return f"✅ Model saved to '{model_filename}' and assets saved to '{assets_filename}'"
 ### --- END MODIFIED --- ###
 
 # --- The prediction functions remain the same ---
