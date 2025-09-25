@@ -44,9 +44,6 @@ with st.expander("Review a Past Game"):
     
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
-    ### --- MODIFIED --- ###
-    # The logic is now inside the button's "if" block.
-    # The line that caused the crash has been removed.
     if st.button("Load Selected Game"):
         if selected_game:
             _, match_idx, game_idx = selected_game
@@ -54,7 +51,6 @@ with st.expander("Review a Past Game"):
             game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
-            # Load the draft into session state
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
             st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
             for i in range(5):
@@ -66,11 +62,10 @@ with st.expander("Review a Past Game"):
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
             st.rerun()
-    ### --- END MODIFIED --- ###
 
 st.markdown("---")
 
-# The rest of the file remains exactly the same
+# --- Main Draft Interface ---
 draft = st.session_state.draft
 prob_placeholder = st.empty()
 turn_placeholder = st.empty()
@@ -120,9 +115,11 @@ explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.
 with prob_placeholder.container():
     st.subheader("Live Win Probability")
     st.markdown("**Overall Prediction (Draft + Team History)**")
-    st.progress(float(prob_overall))
+    ### --- MODIFIED --- ###
+    st.progress(float(prob_overall), text=f"{prob_overall:.1%}")
     st.markdown("**Draft-Only Prediction (Team Neutral)**")
-    st.progress(float(prob_draft_only))
+    st.progress(float(prob_draft_only), text=f"{prob_draft_only:.1%}")
+    ### --- END MODIFIED --- ###
 
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
