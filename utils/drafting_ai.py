@@ -7,9 +7,9 @@ from collections import defaultdict, Counter
 import itertools
 import math
 
-# --- Model Loading ---
 @st.cache_resource
 def load_prediction_assets(model_path='draft_predictor.joblib'):
+    """Loads the trained model and associated assets from the .joblib file."""
     try:
         assets = joblib.load(model_path)
         return assets
@@ -17,119 +17,124 @@ def load_prediction_assets(model_path='draft_predictor.joblib'):
         st.error(f"Model file not found at '{model_path}'. Please ensure it is in the project's root directory.")
         return None
 
-# --- Data Preparation (from Notebook) ---
-@st.cache_data
-def prepare_draft_data(_pooled_matches, selected_team=None):
-    """Prepares both global and team-specific dataframes for the draft assistant."""
-    global_synergy_df = pd.DataFrame()
-    global_counter_df = pd.DataFrame()
-    team_synergy_df = pd.DataFrame()
-    team_counter_df = pd.DataFrame()
-
-    # Synergy analysis
-    duo_counter = defaultdict(lambda: {"games": 0, "wins": 0})
-    for match in _pooled_matches:
-        teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
-        for game in match.get("match2games", []):
-            winner = str(game.get("winner", ""))
-            for idx, opp in enumerate(game.get("opponents", [])):
-                players = [p["champion"] for p in opp.get("players", []) if isinstance(p, dict) and "champion" in p]
-                for h1, h2 in itertools.combinations(sorted(players), 2):
-                    key = (h1, h2)
-                    duo_counter[key]["games"] += 1
-                    if str(idx + 1) == winner:
-                        duo_counter[key]["wins"] += 1
+def predict_draft_outcome(blue_picks, red_picks, blue_bans, red_bans, blue_team, red_team, model_assets, HERO_PROFILES):
+    """Predicts win probability for Blue Team, returning both overall and draft-only scores."""
+    model, feature_to_idx = model_assets['model'], model_assets['feature_to_idx']
+    all_heroes, all_teams, all_tags = model_assets['all_heroes'], model_assets['all_teams'], model_assets['all_tags']
     
-    rows = [{"Hero 1": k[0], "Hero 2": k[1], "Games Together": v["games"], "Wins": v["wins"], "Win Rate (%)": round(v["wins"]/v["games"]*100, 2) if v["games"] > 0 else 0} for k, v in duo_counter.items()]
-    global_synergy_df = pd.DataFrame(rows)
+    vector = np.zeros(len(feature_to_idx))
 
-    # Counter analysis
-    counter_stats = defaultdict(lambda: {"games": 0, "wins": 0})
-    for match in _pooled_matches:
-        for game in match.get("match2games", []):
-            winner = str(game.get("winner", ""))
-            opponents = game.get("opponents", [])
-            if len(opponents) != 2: continue
-            heroes1 = {p["champion"] for p in opponents[0].get("players", []) if isinstance(p, dict) and "champion" in p}
-            heroes2 = {p["champion"] for p in opponents[1].get("players", []) if isinstance(p, dict) and "champion" in p}
-            for h1 in heroes1:
-                for h2 in heroes2:
-                    counter_stats[(h1, h2)]["games"] += 1; counter_stats[(h2, h1)]["games"] += 1
-                    if winner == "1": counter_stats[(h1, h2)]["wins"] += 1
-                    if winner == "2": counter_stats[(h2, h1)]["wins"] += 1
+    # Add picks
+    for role, hero in blue_picks.items():
+        if hero in all_heroes and f"{hero}_{role}" in feature_to_idx: vector[feature_to_idx[f"{hero}_{role}"]] = 1
+    for role, hero in red_picks.items():
+        if hero in all_heroes and f"{hero}_{role}" in feature_to_idx: vector[feature_to_idx[f"{hero}_{role}"]] = -1
+    
+    # Add bans
+    for hero in blue_bans:
+        if hero in all_heroes and f"{hero}_Ban" in feature_to_idx: vector[feature_to_idx[f"{hero}_Ban"]] = 1
+    for hero in red_bans:
+        if hero in all_heroes and f"{hero}_Ban" in feature_to_idx: vector[feature_to_idx[f"{hero}_Ban"]] = -1
 
-    rows = [{"Ally Hero": k[0], "Enemy Hero": k[1], "Games Against": v["games"], "Wins": v["wins"], "Win Rate (%)": round(v["wins"]/v["games"]*100, 2) if v["games"] > 0 else 0} for k, v in counter_stats.items()]
-    global_counter_df = pd.DataFrame(rows)
+    def get_tags_for_team(team_picks_dict):
+        team_tags, team_picks_list = defaultdict(int), list(team_picks_dict.values())
+        team_has_frontline = any('Front-line' in p['tags'] for h in team_picks_list if h in HERO_PROFILES for p in HERO_PROFILES[h])
+        for hero in team_picks_list:
+            profiles = HERO_PROFILES.get(hero)
+            if profiles:
+                chosen_build = profiles[0]
+                if len(profiles) > 1 and not team_has_frontline and any('Tank' in p['build_name'] for p in profiles):
+                    chosen_build = next((p for p in profiles if 'Tank' in p['build_name']), profiles[0])
+                for tag in chosen_build['tags']:
+                    if tag in all_tags: team_tags[tag] += 1
+        return team_tags
 
-    # Team-specific data if a team is selected
-    if selected_team:
-        # Team Synergy
-        team_duo_counter = defaultdict(lambda: {"games": 0, "wins": 0})
-        for match in _pooled_matches:
-            teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
-            if selected_team not in teams_names: continue
-            for game in match.get("match2games", []):
-                winner = str(game.get("winner", ""))
-                for idx, opp in enumerate(game.get("opponents", [])):
-                    if teams_names[idx] == selected_team:
-                        players = [p["champion"] for p in opp.get("players", []) if isinstance(p, dict) and "champion" in p]
-                        for h1, h2 in itertools.combinations(sorted(players), 2):
-                            key = (h1, h2)
-                            team_duo_counter[key]["games"] += 1
-                            if str(idx + 1) == winner:
-                                team_duo_counter[key]["wins"] += 1
-        team_rows = [{"Hero 1": k[0], "Hero 2": k[1], "Games Together": v["games"], "Wins": v["wins"], "Win Rate (%)": round(v["wins"]/v["games"]*100, 2) if v["games"] > 0 else 0} for k, v in team_duo_counter.items()]
-        team_synergy_df = pd.DataFrame(team_rows)
+    blue_tags, red_tags = get_tags_for_team(blue_picks), get_tags_for_team(red_picks)
+    for tag, count in blue_tags.items():
+        if f"blue_{tag}_count" in feature_to_idx: vector[feature_to_idx[f"blue_{tag}_count"]] = count
+    for tag, count in red_tags.items():
+        if f"red_{tag}_count" in feature_to_idx: vector[feature_to_idx[f"red_{tag}_count"]] = count
 
-    return global_synergy_df, global_counter_df, team_synergy_df, team_counter_df
+    if blue_team in all_teams and blue_team in feature_to_idx: vector[feature_to_idx[blue_team]] = 1
+    if red_team in all_teams and red_team in feature_to_idx: vector[feature_to_idx[red_team]] = -1
+    
+    vector_draft_only = vector.copy()
+    if blue_team in all_teams and blue_team in feature_to_idx: vector_draft_only[feature_to_idx[blue_team]] = 0
+    if red_team in all_teams and red_team in feature_to_idx: vector_draft_only[feature_to_idx[red_team]] = 0
 
-# --- Suggestion Logic (from Notebook) ---
-def get_dynamic_weight(team_games):
-    """Returns (team_weight, global_weight) based on sample size."""
-    if team_games >= 10: return 0.65, 0.35
-    elif team_games >= 5: return 0.50, 0.50
-    else: return 0.20, 0.80
+    prob_overall = model.predict_proba(vector.reshape(1, -1))[0][1]
+    prob_draft_only = model.predict_proba(vector_draft_only.reshape(1, -1))[0][1]
+    
+    return prob_overall, prob_draft_only
 
-def calculate_weighted_score(global_score, team_score, team_games):
-    """Calculates weighted score based on sample size."""
-    team_w, global_w = get_dynamic_weight(team_games)
-    if team_score is None: return global_score
-    return (team_w * team_score) + (global_w * global_score)
+### --- ADDED --- ###
+# This entire block restores the notebook's detailed text analysis feature.
+def generate_prediction_explanation(blue_picks, red_picks, HERO_PROFILES, HERO_DAMAGE_TYPE):
+    """Generates a dual-sided analysis for the draft, including composition and strategy."""
+    def analyze_team(team_picks, damage_types):
+        points = []
+        if not team_picks: return ["Waiting for picks..."]
+        
+        all_tags = [tag for hero in team_picks if hero in HERO_PROFILES for profile in HERO_PROFILES[hero] for tag in profile['tags']]
+        
+        # Composition Analysis
+        if 'Front-line' not in all_tags and 'Initiator' not in all_tags:
+            points.append("⚠️ **Lacks a durable front-line or initiator.**")
+        
+        magic_count = sum(1 for hero in team_picks if 'Magic' in damage_types.get(hero, []))
+        phys_count = sum(1 for hero in team_picks if 'Physical' in damage_types.get(hero, []))
+        
+        if magic_count == 0 and phys_count > 1: points.append("⚠️ **Lacks magic damage.**")
+        elif phys_count == 0 and magic_count > 1: points.append("⚠️ **Lacks physical damage.**")
+        else: points.append("✅ **Balanced damage profile.**")
+            
+        # Strategy Analysis
+        if all_tags.count('High Mobility') >= 2 and all_tags.count('Burst') >= 2:
+            points.append("📈 **Strategy: Excellent Pick-off potential.**")
+        if all_tags.count('Poke') >= 2 and all_tags.count('Long Range') >= 1:
+            points.append("📈 **Strategy: Strong Poke & Siege composition.**")
+        if all_tags.count('Initiator') >= 1 and all_tags.count('AoE Damage') >= 2:
+            points.append("📈 **Strategy: Strong Team Fighting capabilities.**")
+            
+        return points if points else ["No outstanding features to note."]
 
-def get_ai_suggestions(available_heroes, your_picks, enemy_picks, global_synergy_df, global_counter_df, team_synergy_df, team_counter_df, selected_team=None):
-    """Calculates suggestion scores using the hybrid notebook logic."""
+    blue_analysis = analyze_team(blue_picks, HERO_DAMAGE_TYPE)
+    red_analysis = analyze_team(red_picks, HERO_DAMAGE_TYPE)
+    return {'blue': blue_analysis, 'red': red_analysis}
+
+def get_ai_suggestions(available_heroes, your_picks, enemy_picks, your_bans, enemy_bans, your_team, enemy_team, model_assets, HERO_PROFILES, is_blue_turn, phase):
+    """Calculates the best hero to pick or ban to maximize win probability."""
     suggestions = []
-    weights = {'synergy': 1.0, 'counter': 1.5, 'penalty': 0.5}
+    blue_p, red_p = (your_picks, enemy_picks) if is_blue_turn else (enemy_picks, your_picks)
+    blue_b, red_b = (your_bans, enemy_bans) if is_blue_turn else (enemy_bans, your_bans)
+    blue_t, red_t = (your_team, enemy_team) if is_blue_turn else (enemy_team, your_team)
 
-    for hero in available_heroes:
-        # 1. Synergy Score
-        global_synergy_score, team_synergy_score, team_synergy_games = 50.0, None, 0
-        if your_picks:
-            synergy_rates = [df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))]['Win Rate (%)'].iloc[0] for ally in your_picks for df in [global_synergy_df] if not df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))].empty]
-            if synergy_rates: global_synergy_score = sum(synergy_rates) / len(synergy_rates)
-            if selected_team and not team_synergy_df.empty:
-                team_rates = [df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))]['Win Rate (%)'].iloc[0] for ally in your_picks for df in [team_synergy_df] if not df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))].empty]
-                if team_rates: team_synergy_score = sum(team_rates) / len(team_rates)
-                team_synergy_games = sum(df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))]['Games Together'].sum() for ally in your_picks for df in [team_synergy_df] if not df[((df['Hero 1'] == hero) & (df['Hero 2'] == ally)) | ((df['Hero 1'] == ally) & (df['Hero 2'] == hero))].empty)
-        
-        # 2. Counter Score
-        global_counter_score, team_counter_score = 50.0, None
-        if enemy_picks:
-            counter_rates = [df[(df['Ally Hero'] == hero) & (df['Enemy Hero'] == enemy)]['Win Rate (%)'].iloc[0] for enemy in enemy_picks for df in [global_counter_df] if not df[(df['Ally Hero'] == hero) & (df['Enemy Hero'] == enemy)].empty]
-            if counter_rates: global_counter_score = sum(counter_rates) / len(counter_rates)
+    if phase == "BAN":
+        for hero in available_heroes:
+            hypothetical_enemy_bans = enemy_bans + [hero]
+            # We care about what happens if the ENEMY picks the hero, so we check that.
+            # A high threat ban is a hero the enemy would be strong with.
+            hypothetical_enemy_picks = enemy_picks.copy()
+            open_roles = [r for r in ["EXP", "Jungle", "Mid", "Gold", "Roam"] if r not in hypothetical_enemy_picks]
+            if not open_roles: continue
+            hypothetical_enemy_picks[open_roles[0]] = hero
 
-        # 3. Penalty Score
-        global_penalty_score, team_penalty_score = 50.0, None
-        if enemy_picks:
-            penalty_rates = [df[(df['Ally Hero'] == enemy) & (df['Enemy Hero'] == hero)]['Win Rate (%)'].iloc[0] for enemy in enemy_picks for df in [global_counter_df] if not df[(df['Ally Hero'] == enemy) & (df['Enemy Hero'] == hero)].empty]
-            if penalty_rates: global_penalty_score = sum(penalty_rates) / len(penalty_rates)
-        
-        final_synergy = calculate_weighted_score(global_synergy_score, team_synergy_score, team_synergy_games)
-        final_counter = global_counter_score # Simplified for now, can add team counter later
-        final_penalty = global_penalty_score
+            win_prob_blue, _ = predict_draft_outcome(blue_p, hypothetical_enemy_picks, blue_b, red_b, blue_t, red_t, model_assets, HERO_PROFILES)
+            threat_score = 1 - win_prob_blue if is_blue_turn else win_prob_blue
+            suggestions.append((hero, threat_score))
 
-        final_score = (weights['synergy'] * final_synergy) + (weights['counter'] * final_counter) - (weights['penalty'] * (final_penalty - 50))
-        justification = f"Synergy: {final_synergy:.1f} | Counter: {final_counter:.1f} | Penalty: {final_penalty:.1f}"
-        suggestions.append((hero, final_score, justification))
+    elif phase == "PICK":
+        open_roles = [role for role in ["EXP", "Jungle", "Mid", "Gold", "Roam"] if role not in your_picks]
+        if not open_roles: return []
+        for hero in available_heroes:
+            hypothetical_your_picks = your_picks.copy()
+            hypothetical_your_picks[open_roles[0]] = hero
+            blue_p_sim = hypothetical_your_picks if is_blue_turn else blue_p
+            red_p_sim = red_p if is_blue_turn else hypothetical_your_picks
+            
+            win_prob_blue, _ = predict_draft_outcome(blue_p_sim, red_p_sim, blue_b, red_b, blue_t, red_t, model_assets, HERO_PROFILES)
+            pick_score = win_prob_blue if is_blue_turn else (1 - win_prob_blue)
+            suggestions.append((hero, pick_score))
 
     return sorted(suggestions, key=lambda x: x[1], reverse=True)
+### --- END ADDED --- ###
