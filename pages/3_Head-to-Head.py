@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.analysis_functions import process_head_to_head_teams
+from utils.analysis_functions import process_head_to_head_teams, process_head_to_head_heroes
 
 st.set_page_config(layout="wide", page_title="Head-to-Head")
 
