@@ -16,8 +16,14 @@ pooled_matches = st.session_state['pooled_matches']
 # --- Sidebar Controls ---
 st.sidebar.header("Analysis Controls")
 
-# Get unique lists of teams and heroes
-all_teams = sorted(list(set(opp.get('name','').strip() for m in pooled_matches for opp in m.get("match2opponents", []) if opp.get('name'))))
+### --- MODIFIED --- ###
+played_matches = [
+    match for match in pooled_matches 
+    if any(game.get("winner") for game in match.get("match2games", []))
+]
+all_teams = sorted(list(set(opp.get('name','').strip() for m in played_matches for opp in m.get("match2opponents", []) if opp.get('name'))))
+### --- END MODIFIED --- ###
+
 all_heroes = sorted(list(set(p["champion"] for m in pooled_matches for g in m.get("match2games", []) for o in g.get("opponents", []) for p in o.get("players", []) if isinstance(p, dict) and "champion" in p)))
 
 analysis_mode = st.sidebar.radio(
@@ -40,15 +46,17 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
         df_results = analyze_synergy_combos(pooled_matches, team_filter, min_games, top_n, find_anti, focus_hero)
 
     st.header(f"Top {top_n} {analysis_mode}")
-    df_display = df_results.reset_index(drop=True)
-    df_display.index += 1 # Add this
-    st.dataframe(df_display, use_container_width=True)
-    
-    title = f"Win Rate of {'Worst' if find_anti else 'Best'} Hero Duos"
-    if focus_hero:
-        title += f" with {focus_hero}"
+    if df_results.empty:
+        st.warning("No hero pairs found matching the selected criteria.")
+    else:
+        df_display = df_results.reset_index(drop=True)
+        df_display.index += 1
+        st.dataframe(df_display, use_container_width=True)
         
-    plot_synergy_bar_chart(df_results.sort_values("Win Rate (%)", ascending=find_anti), title, focus_hero=focus_hero)
+        title = f"Win Rate of {'Worst' if find_anti else 'Best'} Hero Duos"
+        if focus_hero:
+            title += f" with {focus_hero}"
+        plot_synergy_bar_chart(df_results.sort_values("Win Rate (%)", ascending=find_anti), title, focus_hero=focus_hero)
 
 elif analysis_mode == "Counters":
     focus_on_team_picks = True
@@ -63,12 +71,14 @@ elif analysis_mode == "Counters":
         df_results = analyze_counter_combos(pooled_matches, min_games, top_n, team_filter, focus_on_team_picks)
 
     st.header(f"Top {top_n} Counter Matchups")
-    df_display = df_results.reset_index(drop=True)
-    df_display.index += 1 # Add this
-    st.dataframe(df_display, use_container_width=True)
-    
-    title = f"Win Rate: Ally Hero vs. Enemy Hero"
-    if team_filter != "All Teams":
-        title += f" (Perspective: {team_filter})"
+    if df_results.empty:
+        st.warning("No counter matchups found matching the selected criteria.")
+    else:
+        df_display = df_results.reset_index(drop=True)
+        df_display.index += 1
+        st.dataframe(df_display, use_container_width=True)
         
-    plot_counter_heatmap(df_results, title)
+        title = f"Win Rate: Ally Hero vs. Enemy Hero"
+        if team_filter != "All Teams":
+            title += f" (Perspective: {team_filter})"
+        plot_counter_heatmap(df_results, title)
