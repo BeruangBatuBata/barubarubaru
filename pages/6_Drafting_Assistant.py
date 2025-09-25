@@ -5,6 +5,22 @@ from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
 
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
 
+# --- Helper function for the custom probability bar ---
+def generate_win_prob_bar(probability, title):
+    """Generates a custom HTML two-sided probability bar."""
+    blue_pct = probability * 100
+    red_pct = 100 - blue_pct
+    bar_html = f"""
+    <div style="margin-bottom: 1rem;">
+        <p style="margin-bottom: 0.25rem; font-size: 0.9em; color: #555; font-weight:bold;">{title}</p>
+        <div style="display: flex; width: 100%; height: 28px; font-weight: bold; font-size: 14px; border-radius: 5px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);">
+            <div style="width: {blue_pct:.1f}%; background-color: #3b82f6; color: white; display: flex; align-items: center; justify-content: center;">{blue_pct:.1f}%</div>
+            <div style="width: {red_pct:.1f}%; background-color: #ef4444; color: white; display: flex; align-items: center; justify-content: center;">{red_pct:.1f}%</div>
+        </div>
+    </div>
+    """
+    st.markdown(bar_html, unsafe_allow_html=True)
+
 # --- Load Model & Data ---
 model_assets = load_prediction_assets()
 if model_assets is None:
@@ -114,11 +130,9 @@ explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.
 
 with prob_placeholder.container():
     st.subheader("Live Win Probability")
-    st.markdown("**Overall Prediction (Draft + Team History)**")
     ### --- MODIFIED --- ###
-    st.progress(float(prob_overall), text=f"{prob_overall:.1%}")
-    st.markdown("**Draft-Only Prediction (Team Neutral)**")
-    st.progress(float(prob_draft_only), text=f"{prob_draft_only:.1%}")
+    generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
+    generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
     ### --- END MODIFIED --- ###
 
 with analysis_placeholder.container():
