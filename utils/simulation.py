@@ -3,7 +3,7 @@ import random
 import json
 import os
 from collections import defaultdict
-import math # Added for math.comb
+import math
 
 # --- BRACKET CONFIGURATION FUNCTIONS ---
 def get_bracket_cache_key(tournament_name):
@@ -95,7 +95,6 @@ def get_series_outcome_options(teamA, teamB, bo: int):
     opts = [("Random", "random")]
     if bo == 3:
         opts += [(f"{teamA} 2–0", "A20"), (f"{teamA} 2–1", "A21"), (f"{teamB} 2–1", "B21"), (f"{teamB} 2–0", "B20")]
-    # Add other bo formats if necessary
     return opts
 
 def build_standings_table(teams, played_matches):
@@ -125,11 +124,14 @@ def build_week_blocks(dates):
         else: blocks.append([curr])
     return blocks
 
-### --- ADDED --- ###
+### --- MODIFIED --- ###
 def calculate_series_score_probs(p_win_game, series_format=3):
     """Calculates the probability of each score in a Best-of-X series."""
-    if p_win_game is None or not (0 <= p_win_game <= 1): return {}
-    p, q = p_win_game, 1 - p
+    # Convert potential numpy float to a standard Python float
+    prob_float = float(p_win_game)
+    if not (0 <= prob_float <= 1): return {}
+    
+    p, q = prob_float, 1 - prob_float
     if series_format == 2: return {"2-0": p**2, "1-1": 2 * p * q, "0-2": q**2}
     wins_needed = math.ceil((series_format + 1) / 2)
     results = {}
@@ -142,7 +144,7 @@ def calculate_series_score_probs(p_win_game, series_format=3):
         prob_b = combinations * (q ** wins_needed) * (p ** losses)
         results[f"{losses}-{wins_needed}"] = prob_b
     return dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
-### --- END ADDED --- ###
+### --- END MODIFIED --- ###
 
 # --- SIMULATION ENGINES ---
 def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
