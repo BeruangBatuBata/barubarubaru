@@ -3,6 +3,7 @@ import random
 import json
 import os
 from collections import defaultdict
+import math # Added for math.comb
 
 # --- BRACKET CONFIGURATION FUNCTIONS ---
 def get_bracket_cache_key(tournament_name):
@@ -18,7 +19,6 @@ def load_bracket_config(tournament_name):
                 return json.load(f)
         except Exception:
             pass
-    # Return a default configuration if none is found
     return {
         "brackets": [
             {"start": 1, "end": 2, "name": "Top 2 Seed"},
@@ -125,6 +125,25 @@ def build_week_blocks(dates):
         else: blocks.append([curr])
     return blocks
 
+### --- ADDED --- ###
+def calculate_series_score_probs(p_win_game, series_format=3):
+    """Calculates the probability of each score in a Best-of-X series."""
+    if p_win_game is None or not (0 <= p_win_game <= 1): return {}
+    p, q = p_win_game, 1 - p
+    if series_format == 2: return {"2-0": p**2, "1-1": 2 * p * q, "0-2": q**2}
+    wins_needed = math.ceil((series_format + 1) / 2)
+    results = {}
+    for losses in range(wins_needed):
+        games_played = wins_needed + losses
+        if games_played > series_format: continue
+        combinations = math.comb(games_played - 1, wins_needed - 1)
+        prob_a = combinations * (p ** wins_needed) * (q ** losses)
+        results[f"{wins_needed}-{losses}"] = prob_a
+        prob_b = combinations * (q ** wins_needed) * (p ** losses)
+        results[f"{losses}-{wins_needed}"] = prob_b
+    return dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
+### --- END ADDED --- ###
+
 # --- SIMULATION ENGINES ---
 def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
     finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
@@ -151,6 +170,9 @@ def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_match
     return pd.DataFrame(rows).round(2)
 
 def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
+    """
+    Corrected simulation for group stage tournaments.
+    """
     teams = [t for g_teams in groups.values() for t in g_teams]
     finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
     for _ in range(n_sim):
@@ -176,8 +198,6 @@ def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplay
                     if start <= rank_in_group <= end:
                         finish_counter[team][bracket["name"]] += 1
                         break
-    ### --- MODIFIED --- ###
-    # This was the source of the KeyError. Fixed the variable name from `rows` to `prob_data`.
     prob_data = []
     for t in teams:
         row = {"Team": t}
@@ -189,4 +209,3 @@ def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplay
             row[f"{bracket['name']} (%)"] = (finish_counter[t][bracket["name"]] / n_sim) * 100
         prob_data.append(row)
     return pd.DataFrame(prob_data).round(2)
-    ### --- END MODIFIED --- ###
