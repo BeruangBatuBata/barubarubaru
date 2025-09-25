@@ -4,16 +4,12 @@ import numpy as np
 import xgboost as xgb
 import json
 import joblib
-from collections import defaultdict, Counter
-import itertools
-import math
+from collections import defaultdict
+import io # Required for in-memory files
 
 # --- MODEL LOADING (FOR PREDICTION) ---
 @st.cache_resource
 def load_prediction_assets(model_path='draft_predictor.json', assets_path='draft_assets.json'):
-    """
-    Loads the trained model from its native JSON format and the assets from their JSON file.
-    """
     try:
         with open(assets_path, 'r') as f:
             assets = json.load(f)
@@ -22,19 +18,21 @@ def load_prediction_assets(model_path='draft_predictor.json', assets_path='draft
         assets['model'] = model
         return assets
     except FileNotFoundError:
-        st.error(f"Model or assets file not found. Please ensure '{model_path}' and '{assets_path}' are in the root directory.")
+        # This is expected if the files haven't been created yet.
+        # We'll handle the user message on the page itself.
         return None
 
-### --- ADDED: MODEL TRAINING FUNCTION --- ###
-def train_and_save_prediction_model(matches, hero_profiles, model_filename='draft_predictor.json', assets_filename='draft_assets.json'):
+### --- MODIFIED: MODEL TRAINING FUNCTION --- ###
+def train_and_save_prediction_model(matches, hero_profiles):
     """
-    Trains an XGBoost model and saves it to a native JSON format, with assets in a separate JSON file.
+    Trains an XGBoost model and returns the model and assets as in-memory objects
+    for downloading, instead of saving directly to files.
     """
+    # (The entire logic for collecting data and training the model is identical)
     all_heroes = sorted(list(set(p['champion'] for m in matches for g in m.get('match2games', []) for o in g.get('opponents', []) for p in o.get('players', []) if 'champion' in p)))
     all_teams = sorted(list(set(o['name'] for m in matches for o in m.get('match2opponents', []) if 'name' in o)))
     roles = ["EXP", "Jungle", "Mid", "Gold", "Roam"]
     all_tags = sorted(list(set(tag for profiles in hero_profiles.values() for profile in profiles for tag in profile['tags'])))
-    
     feature_list = []
     for hero in all_heroes:
         for role in roles: feature_list.append(f"{hero}_{role}")
@@ -42,9 +40,7 @@ def train_and_save_prediction_model(matches, hero_profiles, model_filename='draf
     feature_list.extend(all_teams)
     for tag in all_tags: feature_list.append(f"blue_{tag}_count")
     for tag in all_tags: feature_list.append(f"red_{tag}_count")
-    
     feature_to_idx = {feature: i for i, feature in enumerate(feature_list)}
-    
     X, y = [], []
     for match in matches:
         match_teams = [o.get('name') for o in match.get('match2opponents', [])]
@@ -82,109 +78,27 @@ def train_and_save_prediction_model(matches, hero_profiles, model_filename='draf
             vector[feature_to_idx[match_teams[1]]] = -1
             X.append(vector)
             y.append(1 if game['winner'] == '1' else 0)
-
     if not X:
-        raise ValueError("Could not generate any training samples from the provided match data.")
+        raise ValueError("Could not generate any training samples.")
     
     model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss', n_estimators=200, max_depth=6, learning_rate=0.05, colsample_bytree=0.8)
     model.fit(np.array(X), np.array(y))
     
-    model.save_model(model_filename)
+    # --- NEW SAVING LOGIC ---
+    # 1. Save the model to an in-memory byte buffer
+    buffer = io.BytesIO()
+    model.save_model(buffer)
+    model_data = buffer.getvalue()
+    
+    # 2. Create the assets dictionary and convert to a JSON string
     model_assets = {
         'feature_to_idx': feature_to_idx, 'roles': roles, 'all_heroes': all_heroes, 
         'all_tags': all_tags, 'all_teams': all_teams
     }
-    with open(assets_filename, 'w') as f:
-        json.dump(model_assets, f)
-
-    return f"✅ Model saved to '{model_filename}' and assets saved to '{assets_filename}'"
-### --- END ADDED --- ###
+    assets_data = json.dumps(model_assets, indent=4)
+    
+    return model_data, assets_data
+### --- END MODIFIED --- ###
 
 # --- The prediction functions remain the same ---
-# ... (predict_draft_outcome, generate_prediction_explanation, etc.)
-def predict_draft_outcome(blue_picks, red_picks, blue_bans, red_bans, blue_team, red_team, model_assets, HERO_PROFILES):
-    model, feature_to_idx = model_assets['model'], model_assets['feature_to_idx']
-    all_heroes, all_teams, all_tags = model_assets['all_heroes'], model_assets['all_teams'], model_assets['all_tags']
-    vector = np.zeros(len(feature_to_idx))
-    for role, hero in blue_picks.items():
-        if hero in all_heroes and f"{hero}_{role}" in feature_to_idx: vector[feature_to_idx[f"{hero}_{role}"]] = 1
-    for role, hero in red_picks.items():
-        if hero in all_heroes and f"{hero}_{role}" in feature_to_idx: vector[feature_to_idx[f"{hero}_{role}"]] = -1
-    for hero in blue_bans:
-        if hero in all_heroes and f"{hero}_Ban" in feature_to_idx: vector[feature_to_idx[f"{hero}_Ban"]] = 1
-    for hero in red_bans:
-        if hero in all_heroes and f"{hero}_Ban" in feature_to_idx: vector[feature_to_idx[f"{hero}_Ban"]] = -1
-    def get_tags_for_team(team_picks_dict):
-        team_tags, team_picks_list = defaultdict(int), list(team_picks_dict.values())
-        team_has_frontline = any('Front-line' in p['tags'] for h in team_picks_list if h in HERO_PROFILES for p in HERO_PROFILES[h])
-        for hero in team_picks_list:
-            profiles = HERO_PROFILES.get(hero)
-            if profiles:
-                chosen_build = profiles[0]
-                if len(profiles) > 1 and not team_has_frontline and any('Tank' in p['build_name'] for p in profiles):
-                    chosen_build = next((p for p in profiles if 'Tank' in p['build_name']), profiles[0])
-                for tag in chosen_build['tags']:
-                    if tag in all_tags: team_tags[tag] += 1
-        return team_tags
-    blue_tags, red_tags = get_tags_for_team(blue_picks), get_tags_for_team(red_picks)
-    for tag, count in blue_tags.items():
-        if f"blue_{tag}_count" in feature_to_idx: vector[feature_to_idx[f"blue_{tag}_count"]] = count
-    for tag, count in red_tags.items():
-        if f"red_{tag}_count" in feature_to_idx: vector[feature_to_idx[f"red_{tag}_count"]] = count
-    if blue_team in all_teams and blue_team in feature_to_idx: vector[feature_to_idx[blue_team]] = 1
-    if red_team in all_teams and red_team in feature_to_idx: vector[feature_to_idx[red_team]] = -1
-    vector_draft_only = vector.copy()
-    if blue_team in all_teams and blue_team in feature_to_idx: vector_draft_only[feature_to_idx[blue_team]] = 0
-    if red_team in all_teams and red_team in feature_to_idx: vector_draft_only[feature_to_idx[red_team]] = 0
-    prob_overall = model.predict_proba(vector.reshape(1, -1))[0][1]
-    prob_draft_only = model.predict_proba(vector_draft_only.reshape(1, -1))[0][1]
-    return prob_overall, prob_draft_only
-
-def generate_prediction_explanation(blue_picks, red_picks, HERO_PROFILES, HERO_DAMAGE_TYPE):
-    def analyze_team(team_picks, damage_types):
-        points = []
-        if not team_picks: return ["Waiting for picks..."]
-        all_tags = [tag for hero in team_picks if hero in HERO_PROFILES for profile in HERO_PROFILES[hero] for tag in profile['tags']]
-        if 'Front-line' not in all_tags and 'Initiator' not in all_tags:
-            points.append("⚠️ **Lacks a durable front-line or initiator.**")
-        magic_count = sum(1 for hero in team_picks if 'Magic' in damage_types.get(hero, []))
-        phys_count = sum(1 for hero in team_picks if 'Physical' in damage_types.get(hero, []))
-        if magic_count == 0 and phys_count > 1: points.append("⚠️ **Lacks magic damage.**")
-        elif phys_count == 0 and magic_count > 1: points.append("⚠️ **Lacks physical damage.**")
-        else: points.append("✅ **Balanced damage profile.**")
-        if all_tags.count('High Mobility') >= 2 and all_tags.count('Burst') >= 2:
-            points.append("📈 **Strategy: Excellent Pick-off potential.**")
-        if all_tags.count('Poke') >= 2 and all_tags.count('Long Range') >= 1:
-            points.append("📈 **Strategy: Strong Poke & Siege composition.**")
-        if all_tags.count('Initiator') >= 1 and all_tags.count('AoE Damage') >= 2:
-            points.append("📈 **Strategy: Strong Team Fighting capabilities.**")
-        return points if points else ["No outstanding features to note."]
-    blue_analysis = analyze_team(blue_picks, HERO_DAMAGE_TYPE)
-    red_analysis = analyze_team(red_picks, HERO_DAMAGE_TYPE)
-    return {'blue': blue_analysis, 'red': red_analysis}
-
-def get_ai_suggestions(available_heroes, your_picks, enemy_picks, your_bans, enemy_bans, your_team, enemy_team, model_assets, HERO_PROFILES, is_blue_turn, phase):
-    suggestions = []
-    blue_p, red_p = (your_picks, enemy_picks) if is_blue_turn else (enemy_picks, your_picks)
-    blue_b, red_b = (your_bans, enemy_bans) if is_blue_turn else (enemy_bans, your_bans)
-    blue_t, red_t = (your_team, enemy_team) if is_blue_turn else (enemy_team, your_team)
-    if phase == "BAN":
-        for hero in available_heroes:
-            hypothetical_enemy_picks = enemy_picks.copy()
-            open_roles = [r for r in ["EXP", "Jungle", "Mid", "Gold", "Roam"] if r not in hypothetical_enemy_picks]
-            if not open_roles: continue
-            hypothetical_enemy_picks[open_roles[0]] = hero
-            win_prob_blue, _ = predict_draft_outcome(blue_p, hypothetical_enemy_picks, blue_b, red_b, blue_t, red_t, model_assets, HERO_PROFILES)
-            threat_score = 1 - win_prob_blue if is_blue_turn else win_prob_blue
-            suggestions.append((hero, threat_score))
-    elif phase == "PICK":
-        open_roles = [role for role in ["EXP", "Jungle", "Mid", "Gold", "Roam"] if role not in your_picks]
-        if not open_roles: return []
-        for hero in available_heroes:
-            hypothetical_your_picks = your_picks.copy()
-            hypothetical_your_picks[open_roles[0]] = hero
-            blue_p_sim, red_p_sim = (hypothetical_your_picks, red_p) if is_blue_turn else (blue_p, hypothetical_your_picks)
-            win_prob_blue, _ = predict_draft_outcome(blue_p_sim, red_p_sim, blue_b, red_b, blue_t, red_t, model_assets, HERO_PROFILES)
-            pick_score = win_prob_blue if is_blue_turn else (1 - win_prob_blue)
-            suggestions.append((hero, pick_score))
-    return sorted(suggestions, key=lambda x: x[1], reverse=True)
+# ...
