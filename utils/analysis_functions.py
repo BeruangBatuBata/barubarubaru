@@ -244,6 +244,22 @@ def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
         "t2_bans_df": pd.DataFrame(t2_bans.most_common(8), columns=['Hero', 'Bans']),
     }
 
+def process_head_to_head_heroes(h1, h2, pooled_matches):
+    """Analyzes the head-to-head record between two specific heroes."""
+    games_with_both, win_h1, win_h2 = 0, 0, 0
+    for match in pooled_matches:
+        for game in match.get("match2games", []):
+            opp_heroes = [ {p["champion"] for p in o.get("players", []) if isinstance(p, dict) and "champion" in p} for o in game.get("opponents", []) ]
+            if len(opp_heroes) != 2: continue
+            side1, side2 = opp_heroes
+            if (h1 in side1 and h2 in side2) or (h2 in side1 and h1 in side2):
+                games_with_both += 1
+                winner = str(game.get("winner", ""))
+                if (h1 in side1 and winner == "1") or (h1 in side2 and winner == "2"): win_h1 += 1
+                if (h2 in side1 and winner == "1") or (h2 in side2 and winner == "2"): win_h2 += 1
+    return {"total_games": games_with_both, "h1_wins": win_h1, "h2_wins": win_h2}
+
+
 def analyze_synergy_combos(pooled_matches, team_filter, min_games, top_n, find_anti_synergy=False, focus_hero=None):
     """Calculates hero pair synergies (or anti-synergies)"""
     duo_counter = defaultdict(lambda: {"games": 0, "wins": 0})
