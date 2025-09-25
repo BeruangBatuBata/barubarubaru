@@ -44,6 +44,9 @@ with st.expander("Review a Past Game"):
     
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
+    ### --- MODIFIED --- ###
+    # The logic is now inside the button's "if" block.
+    # The line that caused the crash has been removed.
     if st.button("Load Selected Game"):
         if selected_game:
             _, match_idx, game_idx = selected_game
@@ -51,6 +54,7 @@ with st.expander("Review a Past Game"):
             game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
+            # Load the draft into session state
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
             st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
             for i in range(5):
@@ -59,12 +63,14 @@ with st.expander("Review a Past Game"):
                 st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
                 st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
             
-            st.session_state.game_selector = None # Reset selector to allow re-selection
+            winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
+            st.success(f"**Actual Winner:** {winner}")
             st.rerun()
+    ### --- END MODIFIED --- ###
 
 st.markdown("---")
 
-# --- Main Draft Interface ---
+# The rest of the file remains exactly the same
 draft = st.session_state.draft
 prob_placeholder = st.empty()
 turn_placeholder = st.empty()
@@ -111,15 +117,12 @@ red_b = [v for v in draft['red_bans'] if v]
 prob_overall, prob_draft_only = predict_draft_outcome(blue_p, red_p, blue_b, red_b, draft['blue_team'], draft['red_team'], model_assets, HERO_PROFILES)
 explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
 
-# --- Display Results ---
 with prob_placeholder.container():
     st.subheader("Live Win Probability")
     st.markdown("**Overall Prediction (Draft + Team History)**")
-    ### --- MODIFIED --- ###
     st.progress(float(prob_overall))
     st.markdown("**Draft-Only Prediction (Team Neutral)**")
     st.progress(float(prob_draft_only))
-    ### --- END MODIFIED --- ###
 
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
