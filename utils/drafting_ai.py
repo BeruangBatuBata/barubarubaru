@@ -2,23 +2,34 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-import joblib
-from collections import defaultdict, Counter
-import itertools
+import json
+from collections import defaultdict
 import math
 
 @st.cache_resource
-def load_prediction_assets(model_path='draft_predictor.joblib'):
-    """Loads the trained model and associated assets from the .joblib file."""
+def load_prediction_assets(model_path='draft_predictor.json', assets_path='draft_assets.json'):
+    """
+    Loads the trained model from its native JSON format and the assets from their JSON file.
+    """
     try:
-        assets = joblib.load(model_path)
+        # Load the assets first
+        with open(assets_path, 'r') as f:
+            assets = json.load(f)
+        
+        # Create a new model instance and load the saved state into it
+        model = xgb.XGBClassifier()
+        model.load_model(model_path)
+        
+        assets['model'] = model
         return assets
     except FileNotFoundError:
-        st.error(f"Model file not found at '{model_path}'. Please ensure it is in the project's root directory.")
+        st.error(f"Model or assets file not found. Please ensure '{model_path}' and '{assets_path}' are in the project's root directory.")
         return None
 
-# The train_and_save_prediction_model function has been moved to train_model.py
-
+# The rest of the functions (predict_draft_outcome, get_ai_suggestions, etc.)
+# remain exactly the same as they were. They will now receive the correctly
+# loaded assets and work as intended.
+# ... (rest of the functions from previous correct version) ...
 def predict_draft_outcome(blue_picks, red_picks, blue_bans, red_bans, blue_team, red_team, model_assets, HERO_PROFILES):
     """Predicts win probability for Blue Team, returning both overall and draft-only scores."""
     model, feature_to_idx = model_assets['model'], model_assets['feature_to_idx']
@@ -59,7 +70,6 @@ def predict_draft_outcome(blue_picks, red_picks, blue_bans, red_bans, blue_team,
     return prob_overall, prob_draft_only
 
 def generate_prediction_explanation(blue_picks, red_picks, HERO_PROFILES, HERO_DAMAGE_TYPE):
-    """Generates a dual-sided analysis for the draft, including composition and strategy."""
     def analyze_team(team_picks, damage_types):
         points = []
         if not team_picks: return ["Waiting for picks..."]
@@ -83,7 +93,6 @@ def generate_prediction_explanation(blue_picks, red_picks, HERO_PROFILES, HERO_D
     return {'blue': blue_analysis, 'red': red_analysis}
 
 def get_ai_suggestions(available_heroes, your_picks, enemy_picks, your_bans, enemy_bans, your_team, enemy_team, model_assets, HERO_PROFILES, is_blue_turn, phase):
-    """Calculates the best hero to pick or ban to maximize win probability."""
     suggestions = []
     blue_p, red_p = (your_picks, enemy_picks) if is_blue_turn else (enemy_picks, your_picks)
     blue_b, red_b = (your_bans, enemy_bans) if is_blue_turn else (enemy_bans, your_bans)
@@ -103,8 +112,7 @@ def get_ai_suggestions(available_heroes, your_picks, enemy_picks, your_bans, ene
         for hero in available_heroes:
             hypothetical_your_picks = your_picks.copy()
             hypothetical_your_picks[open_roles[0]] = hero
-            blue_p_sim = hypothetical_your_picks if is_blue_turn else blue_p
-            red_p_sim = red_p if is_blue_turn else hypothetical_your_picks
+            blue_p_sim, red_p_sim = (hypothetical_your_picks, red_p) if is_blue_turn else (blue_p, hypothetical_your_picks)
             win_prob_blue, _ = predict_draft_outcome(blue_p_sim, red_p_sim, blue_b, red_b, blue_t, red_t, model_assets, HERO_PROFILES)
             pick_score = win_prob_blue if is_blue_turn else (1 - win_prob_blue)
             suggestions.append((hero, pick_score))
