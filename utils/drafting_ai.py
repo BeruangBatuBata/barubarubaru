@@ -93,7 +93,6 @@ def train_and_save_prediction_model(matches, hero_profiles, model_filename='draf
     model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss', n_estimators=200, max_depth=6, learning_rate=0.05, colsample_bytree=0.8)
     model.fit(np.array(X), np.array(y))
     
-    # Save model and assets to the specified filenames
     model.save_model(model_filename)
     model_assets = {
         'feature_to_idx': feature_to_idx, 'roles': roles, 'all_heroes': all_heroes, 
@@ -191,3 +190,22 @@ def get_ai_suggestions(available_heroes, your_picks, enemy_picks, your_bans, ene
             pick_score = win_prob_blue if is_blue_turn else (1 - win_prob_blue)
             suggestions.append((hero, pick_score))
     return sorted(suggestions, key=lambda x: x[1], reverse=True)
+
+### --- ADDED --- ###
+def calculate_series_score_probs(p_win_game, series_format=3):
+    """Calculates the probability of each score in a Best-of-X series."""
+    if p_win_game is None or not (0 <= p_win_game <= 1): return {}
+    p, q = p_win_game, 1 - p
+    if series_format == 2: return {"2-0": p**2, "1-1": 2 * p * q, "0-2": q**2}
+    wins_needed = math.ceil((series_format + 1) / 2)
+    results = {}
+    for losses in range(wins_needed):
+        games_played = wins_needed + losses
+        if games_played > series_format: continue
+        combinations = math.comb(games_played - 1, wins_needed - 1)
+        prob_a = combinations * (p ** wins_needed) * (q ** losses)
+        results[f"{wins_needed}-{losses}"] = prob_a
+        prob_b = combinations * (q ** wins_needed) * (p ** losses)
+        results[f"{losses}-{wins_needed}"] = prob_b
+    return dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
+### --- END ADDED --- ###
