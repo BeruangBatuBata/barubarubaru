@@ -13,20 +13,24 @@ st.set_page_config(
 )
 
 # --- Build the shared sidebar ---
+# This single line creates the consistent sidebar on every page
 build_sidebar()
 
 # --- Function to encode image to Base64 ---
 def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string for embedding in HTML."""
     if os.path.exists(path):
         with open(path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode()
     return None
 
 # --- Main Page Content ---
+
+# Custom Branded Header
 beruang_logo_base64 = get_image_as_base64("beruangbatubata.jpg")
 if beruang_logo_base64:
     st.markdown(f"""
-        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
             <img src="data:image/jpeg;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
                 <h1 style="margin-bottom: 5px;">MLBB Pro-Scene Analytics Dashboard</h1>
@@ -37,7 +41,9 @@ if beruang_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
+    # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
+
 
 # --- State 1: Before Data is Loaded ---
 if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
@@ -62,6 +68,7 @@ else:
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
     
     if not df_stats.empty:
+        # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
         most_banned = df_stats.loc[df_stats['Bans'].idxmax()]
         min_games = 10
@@ -74,6 +81,7 @@ else:
         if highest_wr is not None:
             c3.metric(f"Highest Win Rate (>{min_games} games)", highest_wr['Hero'], f"{highest_wr['Win Rate (%)']:.1f}%")
 
+        # Presence Chart
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         df_presence = df_stats.sort_values("Presence (%)", ascending=False).head(10)
         st.bar_chart(df_presence.set_index('Hero')[['Pick Rate (%)', 'Ban Rate (%)']])
@@ -81,7 +89,7 @@ else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
 st.markdown("---")
-# --- Liquipedia Credit ---
+# --- Liquipedia Credit using Base64 for reliability ---
 liquipedia_logo_base64 = get_image_as_base64("Liquipedia_logo.png")
 if liquipedia_logo_base64:
     st.markdown(f"""
@@ -93,6 +101,7 @@ if liquipedia_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
+    # Fallback if the logo file is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
