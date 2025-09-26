@@ -24,8 +24,7 @@ def build_sidebar():
                 <img src="data:image/png;base64,{logo_base64}" style="width: 40px; height: 60px;margin-right: 0px;">
                 <div style="font-size: 1.3em; font-weight: bold; color: #fafafa; line-height: 1.3;">
                     MLBB Pro-scene<br>
-                    Analytics<br>
-                    Dashboard
+                    Analytics Dashboard
                 </div>
             </div>
             """,
