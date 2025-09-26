@@ -56,7 +56,7 @@ if beruang_logo_base_64:
         col1, col2 = st.columns([1, 4]) # Adjust the ratio as needed
 
         with col1:
-            st.image(f"data:image/png;base64,{beruang_logo_base_64}", width=100)
+            st.image(f"data:image/png;base64,{beruang_logo_base_64}", width=100,align=right)
 
         with col2:
             st.header("MLBB Pro-Scene Analytics Dashboard")
