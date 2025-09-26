@@ -212,3 +212,28 @@ def analyze_counter_combos(pooled_matches, min_games, top_n, team_filter, focus_
             rows.append({"Ally Hero": ally, "Enemy Hero": enemy, "Games Against": stats["games"], "Wins": stats["wins"], "Win Rate (%)": round(stats["wins"] / stats["games"] * 100, 2)})
     df = pd.DataFrame(rows)
     return df if df.empty else df.sort_values("Win Rate (%)", ascending=False).head(top_n)
+
+# --- NEW FUNCTION ---
+def calculate_standings(played_matches):
+    """Calculates wins, losses, and score differentials for each team."""
+    wins = defaultdict(int)
+    losses = defaultdict(int)
+    diffs = defaultdict(int)
+    for m in played_matches:
+        winner = m.get('winner')
+        teamA = m.get('teamA')
+        teamB = m.get('teamB')
+        scoreA = m.get('scoreA', 0)
+        scoreB = m.get('scoreB', 0)
+
+        if winner == '1':
+            wins[teamA] += 1
+            losses[teamB] += 1
+            diffs[teamA] += scoreA - scoreB
+            diffs[teamB] += scoreB - scoreA
+        elif winner == '2':
+            wins[teamB] += 1
+            losses[teamA] += 1
+            diffs[teamB] += scoreB - scoreA
+            diffs[teamA] += scoreA - scoreB
+    return wins, losses, diffs
