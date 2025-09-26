@@ -17,12 +17,19 @@ played_matches = [match for match in pooled_matches if any(game.get("winner") fo
 all_teams = sorted(list(set(opp.get('name','').strip() for match in played_matches for opp in match.get("match2opponents", []) if opp.get('name'))))
 all_heroes = sorted(list(set(p["champion"] for m in pooled_matches for g in m.get("match2games", []) for o in g.get("opponents", []) for p in o.get("players", []) if isinstance(p, dict) and "champion" in p)))
 
-st.sidebar.header("Comparison Setup")
-mode = st.sidebar.radio("Select Comparison Mode:", ["Team vs. Team", "Hero vs. Hero"])
+# --- MODIFICATION START ---
+# 1. Comparison setup moved from the sidebar to the main page.
+st.subheader("Comparison Setup")
+mode = st.radio("Select Comparison Mode:", ["Team vs. Team", "Hero vs. Hero"], horizontal=True)
+st.markdown("---")
 
 if mode == "Team vs. Team":
-    team1 = st.sidebar.selectbox("Select Team 1:", options=all_teams, index=0)
-    team2 = st.sidebar.selectbox("Select Team 2:", options=all_teams, index=1 if len(all_teams) > 1 else 0)
+    col1, col2 = st.columns(2)
+    with col1:
+        team1 = st.selectbox("Select Team 1:", options=all_teams, index=0)
+    with col2:
+        team2 = st.selectbox("Select Team 2:", options=all_teams, index=1 if len(all_teams) > 1 else 0)
+# --- MODIFICATION END ---
 
     if not all_teams:
         st.warning("No teams with completed matches found in the selected data.")
@@ -41,13 +48,37 @@ if mode == "Team vs. Team":
             
             st.subheader("Picks & Bans in H2H Matches")
             c1, c2 = st.columns(2)
-            c1.dataframe(h2h_data["t1_picks_df"], use_container_width=True)
-            c2.dataframe(h2h_data["t1_bans_df"], use_container_width=True)
-            c1.dataframe(h2h_data["t2_picks_df"], use_container_width=True)
-            c2.dataframe(h2h_data["t2_bans_df"], use_container_width=True)
-else:
-    hero1 = st.sidebar.selectbox("Select Hero 1:", options=all_heroes, index=0)
-    hero2 = st.sidebar.selectbox("Select Hero 2:", options=all_heroes, index=1 if len(all_heroes) > 1 else 0)
+
+            # --- MODIFICATION START ---
+            # 2. Reset index and start from 1 for all dataframes
+            def format_df_for_display(df):
+                """Helper function to reset index and start it from 1."""
+                display_df = df.reset_index(drop=True)
+                display_df.index += 1
+                return display_df
+
+            with c1:
+                st.write(f"**{team1} Top Picks**")
+                st.dataframe(format_df_for_display(h2h_data["t1_picks_df"]), use_container_width=True)
+                st.write(f"**{team2} Top Picks**")
+                st.dataframe(format_df_for_display(h2h_data["t2_picks_df"]), use_container_width=True)
+            with c2:
+                st.write(f"**{team1} Top Bans**")
+                st.dataframe(format_df_for_display(h2h_data["t1_bans_df"]), use_container_width=True)
+                st.write(f"**{team2} Top Bans**")
+                st.dataframe(format_df_for_display(h2h_data["t2_bans_df"]), use_container_width=True)
+            # --- MODIFICATION END ---
+
+else: # Hero vs. Hero mode
+    # --- MODIFICATION START ---
+    # 1. Comparison setup moved from the sidebar to the main page.
+    col1, col2 = st.columns(2)
+    with col1:
+        hero1 = st.selectbox("Select Hero 1:", options=all_heroes, index=0)
+    with col2:
+        hero2 = st.selectbox("Select Hero 2:", options=all_heroes, index=1 if len(all_heroes) > 1 else 0)
+    # --- MODIFICATION END ---
+    
     if hero1 == hero2:
         st.error("Please select two different heroes.")
     else:
