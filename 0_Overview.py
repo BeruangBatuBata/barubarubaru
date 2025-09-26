@@ -43,7 +43,7 @@ if beruang_logo_base_64:
                 </p>
             </div>
         </div>
-    ''', unsafe_allow_html=True) # <-- The fix is here
+    ''', unsafe_allow_html=True, width="content") # <-- The fix is here
 
 else:
     # Fallback if the logo is missing
