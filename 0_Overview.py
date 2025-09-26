@@ -35,12 +35,10 @@ if beruang_logo_base64:
             <div>
                 <h1 style="margin-bottom: 10px;">MLBB Pro-Scene Analytics Dashboard</h1>
                 
-                {/* This block is JUST for the quote */}
                 <blockquote style="border-left: 4px solid #4A90E2; padding-left: 15px; margin: 10px 0; font-style: italic; color: #d1d9e1;">
                     Every draft holds a lesson, and every stat is a piece of a puzzle.
                 </blockquote>
 
-                {/* This is a SEPARATE paragraph for the rest of the text */}
                 <p style="margin-top: 10px; color: #afb8c1;">
                     My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
                 </p>
