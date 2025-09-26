@@ -7,3 +7,4 @@ seaborn
 xgboost
 joblib
 scikit-learn
+st-pages
