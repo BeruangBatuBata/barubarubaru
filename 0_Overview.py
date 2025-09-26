@@ -29,7 +29,7 @@ if logo_base64:
                 content: "";
                 display: block;
                 margin-bottom: 20px;
-                height: 100px;
+                height: 50px;
                 background-image: url("data:image/jpeg;base64,{logo_base64}");
                 background-size: 200px;
                 background-repeat: no-repeat;
