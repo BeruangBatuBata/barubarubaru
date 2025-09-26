@@ -12,36 +12,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Final, Stable Sidebar Header ---
-# Using the stable single-line title from our last successful fix
-logo_base64 = get_image_as_base64("beruangbatubata.png")
-if logo_base64:
-    st.markdown(
-        f"""
-        <style>
-            [data-testid="stSidebarNav"]::before {{
-                content: "MLBB Analytics Dashboard";
-                display: flex;
-                align-items: center;
-                height: 70px;
-                margin-bottom: 20px;
-                padding-left: 65px;
-
-                font-size: 1.1em;
-                font-weight: bold;
-                color: #fafafa;
-
-                background-image: url("data:image/png;base64,{logo_base64}");
-                background-repeat: no-repeat;
-                background-size: 40px;
-                background-position: left 15px center;
-            }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
 # --- Build the shared sidebar ---
+# This single line creates the consistent sidebar (with the header inside it).
 build_sidebar()
 
 # --- Function to encode image to Base64 ---
@@ -54,7 +26,7 @@ def get_image_as_base64(path):
 
 # --- Main Page Content ---
 
-# Custom Branded Header
+# Custom Branded Header with the styled quote
 beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
 if beruang_logo_base64:
     st.markdown(f"""
@@ -134,7 +106,7 @@ if liquipedia_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo is missing
+    # Fallback if the logo file is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
