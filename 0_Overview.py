@@ -20,32 +20,53 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Stable Sidebar Header using ::before ---
+# --- Final Version: Custom HTML Sidebar Header ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
-    st.markdown(
+    st.sidebar.markdown(
         f"""
         <style>
-            [data-testid="stSidebarNav"]::before {{
-                content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
-                white-space: pre;
-                display: block;
-                height: 100px;
-                margin-bottom: 15px;
-                padding-left: 65px;
-                line-height: 1.5 !important;
+            /* Make space for our custom header */
+            [data-testid="stSidebarNav"] {{
+                padding-top: 100px;
+            }}
+
+            /* The container for our header */
+            .custom-header {{
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 15px;
+                display: flex;
+                align-items: center; /* Vertically align logo and text */
+                gap: 15px; /* Space between logo and text */
+                z-index: 1000;
+            }}
+
+            /* Style for the logo */
+            .custom-header img {{
+                width: 40px;
+                height: 40px;
+            }}
+
+            /* Style for the title text */
+            .custom-header .title {{
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-                
-                background-image: url("data:image/png;base64,{logo_base64}");
-                background-repeat: no-repeat;
-                background-size: 40px;
-                
-                /* --- FIX: Aligned logo to the top --- */
-                background-position: left 15px top 15px;
+                line-height: 1.3; /* Adjust line spacing */
             }}
         </style>
+
+        <div class="custom-header">
+            <img src="data:image/png;base64,{logo_base64}">
+            <div class="title">
+                MLBB Pro-scene<br>
+                Analytics<br>
+                Dashboard
+            </div>
+        </div>
         """,
         unsafe_allow_html=True,
     )
