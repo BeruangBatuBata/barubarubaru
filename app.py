@@ -155,4 +155,3 @@ else:
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
         </div>
     """, unsafe_allow_html=True)
-
