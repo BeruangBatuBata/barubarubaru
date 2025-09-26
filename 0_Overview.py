@@ -12,7 +12,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Define function once at the top ---
+# --- Build the shared sidebar ---
+# This single line creates the consistent sidebar on every page
+build_sidebar()
+
+# --- Function to encode image to Base64 ---
 def get_image_as_base64(path):
     """Encodes a local image file to a Base64 string for embedding in HTML."""
     if os.path.exists(path):
@@ -20,69 +24,14 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Final Version: Robust HTML Sidebar Header ---
-logo_base64 = get_image_as_base64("beruangbatubata.png")
-if logo_base64:
-    st.sidebar.markdown(
-        f"""
-        <style>
-            /* 1. Force the main sidebar container to be a positioning context */
-            [data-testid="stSidebar"] {{
-                position: relative;
-            }}
-
-            /* 2. Position the custom header within the sidebar */
-            .custom-header {{
-                position: absolute;
-                top: 20px;
-                left: 15px;
-                display: flex;
-                align-items: center;
-                gap: 15px;
-                z-index: 1000;
-            }}
-
-            /* 3. Style the logo and title */
-            .custom-header img {{
-                width: 40px;
-                height: 40px;
-            }}
-            .custom-header .title {{
-                font-size: 1.1em;
-                font-weight: bold;
-                color: #fafafa;
-                line-height: 1.3;
-            }}
-
-            /* 4. Push the navigation links down to make space */
-            [data-testid="stSidebarNav"] {{
-                margin-top: 100px;
-            }}
-        </style>
-
-        <div class="custom-header">
-            <img src="data:image/png;base64,{logo_base64}">
-            <div class="title">
-                MLBB Pro-scene<br>
-                Analytics<br>
-                Dashboard
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-# --- Build the shared sidebar ---
-build_sidebar()
-
 # --- Main Page Content ---
+
 # Custom Branded Header
-beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
+beruang_logo_base64 = get_image_as_base64("beruangbatubata.jpg")
 if beruang_logo_base64:
     st.markdown(f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
-            <img src="data:image/png;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
+            <img src="data:image/jpeg;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
                 <h1 style="margin-bottom: 5px;">MLBB Pro-Scene Analytics Dashboard</h1>
                 <p style="margin: 0; color: #afb8c1;">
@@ -152,7 +101,7 @@ if liquipedia_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo is missing
+    # Fallback if the logo file is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
