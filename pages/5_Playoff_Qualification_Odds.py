@@ -59,11 +59,51 @@ def dashboard(is_group_mode):
     if 'current_brackets' not in st.session_state or st.session_state.get('bracket_tournament') != tournament_name:
         st.session_state.current_brackets = load_bracket_config(tournament_name)['brackets']
         st.session_state.bracket_tournament = tournament_name
-    # (Bracket config UI and the rest of dashboard logic follows...)
+
+    st.sidebar.subheader("Bracket Configuration")
+    for i, bracket in enumerate(st.session_state.current_brackets):
+        bracket['name'] = st.sidebar.text_input(f"Bracket {i+1} Name", value=bracket.get('name', f'Bracket {i+1}'), key=f"bracket_name_{i}")
+        bracket['size'] = st.sidebar.number_input(f"Bracket {i+1} Size", 1, 16, value=bracket.get('size', 2), key=f"bracket_size_{i}")
+    if st.sidebar.button("Save Bracket Config"):
+        save_bracket_config(tournament_name, {'brackets': st.session_state.current_brackets})
+        st.sidebar.success("Bracket config saved!")
+
+    played_matches = [m for m in regular_season_matches if m['date'] <= week_blocks[cutoff_week_idx][-1]] if cutoff_week_idx != -1 else []
+    unplayed_matches = [m for m in regular_season_matches if m['date'] > (week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 else pd.Timestamp.min.date())]
+
+    wins, losses, diffs = calculate_standings(played_matches)
+    forced_wins = {}
+    with st.expander("Force a Winner for Unplayed Matches"):
+        for match in unplayed_matches:
+            winner = st.selectbox(f"{match['teamA']} vs {match['teamB']}", [None, match['teamA'], match['teamB']], key=f"force_{match['teamA']}_{match['teamB']}")
+            if winner: forced_wins[(match['teamA'], match['teamB'])] = winner
+
+    if st.button("Run Simulation", type="primary"):
+        with st.spinner("Running thousands of simulations... this might take a minute."):
+            if is_group_mode:
+                groups = st.session_state.group_config['groups']
+                sim_results = cached_group_sim(tuple(groups.items()), tuple(wins.items()), tuple(diffs.items()), tuple(map(tuple, unplayed_matches)), tuple(forced_wins.items()), tuple(map(tuple, st.session_state.current_brackets)), n_sim)
+            else:
+                sim_results = cached_single_table_sim(tuple(teams), tuple(wins.items()), tuple(diffs.items()), tuple(map(tuple, unplayed_matches)), tuple(forced_wins.items()), tuple(map(tuple, st.session_state.current_brackets)), n_sim)
+        st.session_state.sim_results = sim_results
+
+    if 'sim_results' in st.session_state:
+        st.success("Simulation Complete!")
+        display_simulation_results(st.session_state.sim_results)
 
 if st.session_state.page_view == 'format_selection':
     st.title("🏆 Playoff Odds: Tournament Format")
-    # (Format selection logic)
+    st.write("First, select the format of your tournament's regular season.")
+    c1, c2 = st.columns(2)
+    if c1.button("Single Table (e.g., MPL ID/PH Regular Season)"):
+        st.session_state.page_view = 'single_table_sim'; st.rerun()
+    if c2.button("Group Stage (e.g., MSC, M-Series)"):
+        group_config = load_group_config(tournament_name)
+        if group_config and group_config.get('groups'):
+            st.session_state.group_config = group_config
+            st.session_state.page_view = 'group_sim'; st.rerun()
+        else:
+            st.session_state.page_view = 'group_setup'; st.rerun()
 elif st.session_state.page_view == 'group_setup':
     group_setup_ui()
 else:
