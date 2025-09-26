@@ -21,7 +21,6 @@ def get_image_as_base64(path):
     return None
 
 # --- Sidebar Logo Injection ---
-# 1. Use the new .png filename
 logo_base64 = get_image_as_base64("beruangbatubata.png") 
 if logo_base64:
     st.markdown(
@@ -30,13 +29,13 @@ if logo_base64:
             [data-testid="stSidebarNav"]::before {{
                 content: "";
                 display: block;
-                margin-bottom: 20px;
-                height: 130px;
+                margin-bottom: 15px; /* Reduced space below logo */
                 
-                /* 2. Use the correct image type: image/png */
+                /* === ADJUSTED FOR SMALLER IMAGE === */
+                height: 95px;             /* Reduced container height */
+                background-size: 150px;     /* Made the image smaller */
+                
                 background-image: url("data:image/png;base64,{logo_base64}");
-                
-                background-size: 200px;
                 background-repeat: no-repeat;
                 background-position: 15px 15px;
             }}
@@ -124,7 +123,7 @@ if liquipedia_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo file is missing
+    # Fallback if the logo is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
