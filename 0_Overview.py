@@ -27,7 +27,7 @@ def get_image_as_base64(path):
 # --- Main Page Content ---
 
 # Custom Branded Header
-beruang_logo_base64 = get_image_as_base64("beruangbatubata.jpg")
+beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
 if beruang_logo_base64:
     st.markdown(f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
