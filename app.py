@@ -120,4 +120,4 @@ else:
 
 st.markdown("---")
 # --- Liquipedia Credit ---
-    st.image("Liquipedia_logo.png", width=200) 
+st.image("Liquipedia_logo.png", width=200) 
