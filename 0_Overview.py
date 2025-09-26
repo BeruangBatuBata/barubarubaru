@@ -20,26 +20,46 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Sidebar Logo Injection ---
-logo_base64 = get_image_as_base64("beruangbatubata.png") 
+# --- NEW: Custom HTML Sidebar Header ---
+logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
     st.markdown(
         f"""
         <style>
-            [data-testid="stSidebarNav"]::before {{
-                content: "";
-                display: block;
-                margin-bottom: 15px; /* Reduced space below logo */
-                
-                /* === ADJUSTED FOR SMALLER IMAGE === */
-                height: 100px;             /* Reduced container height */
-                background-size: 40px;     /* Made the image smaller */
-                
-                background-image: url("data:image/png;base64,{logo_base64}");
-                background-repeat: no-repeat;
-                background-position: 15px 15px;
+            /* Push the page navigation links down to make space for our custom header */
+            [data-testid="stSidebarNav"] {{
+                padding-top: 75px;
+            }}
+
+            /* The container for our custom header */
+            .custom-sidebar-header {{
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px; /* Creates space between the title and logo */
+                z-index: 1000;
+            }}
+
+            /* Style for the title text */
+            .sidebar-title {{
+                font-size: 1em; /* 1em is the standard font size */
+                font-weight: bold;
+                color: #fafafa; /* Matches Streamlit's light text color */
+            }}
+
+            /* Style for the logo image */
+            .sidebar-logo {{
+                width: 40px;
+                height: 40px;
             }}
         </style>
+        
+        <div class="custom-sidebar-header">
+            <span class="sidebar-title">MLBB Pro-Scene Analytics Dashboard</span>
+            <img src="data:image/png;base64,{logo_base64}" class="sidebar-logo">
+        </div>
         """,
         unsafe_allow_html=True,
     )
