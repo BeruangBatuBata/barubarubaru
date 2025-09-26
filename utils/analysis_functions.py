@@ -121,11 +121,43 @@ def process_hero_drilldown_data(pooled_matches):
         hero_stats_map[hero] = {"per_team_df": pd.DataFrame(team_stats_rows).sort_values("Games", ascending=False), "matchups_df": pd.DataFrame(matchup_rows)}
     return sorted(list(all_heroes)), hero_stats_map
 
+# --- MODIFICATION START ---
+# This function is now expanded to handle overall stats as well.
 def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
+    # H2H specific stats
     win_counts = {t1_norm: 0, t2_norm: 0}
-    t1_heroes, t2_heroes, t1_bans, t2_bans, total_games = Counter(), Counter(), Counter(), Counter(), 0
+    t1_h2h_heroes, t2_h2h_heroes = Counter(), Counter()
+    t1_h2h_bans, t2_h2h_bans = Counter(), Counter()
+    total_games = 0
+
+    # Overall stats for each team
+    t1_overall_heroes, t2_overall_heroes = Counter(), Counter()
+    t1_overall_bans, t2_overall_bans = Counter(), Counter()
+
     for match in pooled_matches:
         opps = [x.get("name", "").strip() for x in match.get("match2opponents", [])]
+        
+        # --- Overall Stats Calculation ---
+        if t1_norm in opps or t2_norm in opps:
+            try:
+                team_idx = opps.index(t1_norm) if t1_norm in opps else opps.index(t2_norm)
+                current_team = opps[team_idx]
+            except ValueError:
+                continue
+
+            for game in match.get("match2games", []):
+                if len(game.get("opponents", [])) < 2: continue
+                
+                hero_set = {p["champion"] for p in game["opponents"][team_idx].get("players", []) if isinstance(p, dict) and "champion" in p}
+                (t1_overall_heroes if current_team == t1_norm else t2_overall_heroes).update(hero_set)
+
+                extrad = game.get("extradata", {})
+                for ban_n in range(1, 6):
+                    ban_hero = extrad.get(f"team{team_idx+1}ban{ban_n}")
+                    if ban_hero:
+                        (t1_overall_bans if current_team == t1_norm else t2_overall_bans).update([ban_hero])
+
+        # --- H2H Stats Calculation (existing logic) ---
         if {t1_norm, t2_norm}.issubset(set(opps)):
             try:
                 idx1 = opps.index(t1_norm)
@@ -137,15 +169,30 @@ def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
                     total_games += 1
                     winner_team = opps[int(winner) - 1]
                     if winner_team in win_counts: win_counts[winner_team] += 1
+
                 extrad = game.get("extradata", {})
                 for i, opp_game in enumerate(game.get("opponents", [])):
                     hero_set = {p["champion"] for p in opp_game.get("players", []) if isinstance(p, dict) and "champion" in p}
-                    (t1_heroes if i == idx1 else t2_heroes).update(hero_set)
+                    (t1_h2h_heroes if i == idx1 else t2_h2h_heroes).update(hero_set)
                     for ban_n in range(1, 6):
                         ban_hero = extrad.get(f"team{i+1}ban{ban_n}")
                         if ban_hero:
-                            (t1_bans if i == idx1 else t2_bans).update([ban_hero])
-    return {"win_counts": win_counts, "total_games": total_games, "t1_picks_df": pd.DataFrame(t1_heroes.most_common(8), columns=['Hero', 'Picks']), "t2_picks_df": pd.DataFrame(t2_heroes.most_common(8), columns=['Hero', 'Picks']), "t1_bans_df": pd.DataFrame(t1_bans.most_common(8), columns=['Hero', 'Bans']), "t2_bans_df": pd.DataFrame(t2_bans.most_common(8), columns=['Hero', 'Bans'])}
+                            (t1_h2h_bans if i == idx1 else t2_h2h_bans).update([ban_hero])
+    
+    return {
+        "win_counts": win_counts, 
+        "total_games": total_games, 
+        "t1_picks_df": pd.DataFrame(t1_h2h_heroes.most_common(8), columns=['Hero', 'Picks']), 
+        "t2_picks_df": pd.DataFrame(t2_h2h_heroes.most_common(8), columns=['Hero', 'Picks']), 
+        "t1_bans_df": pd.DataFrame(t1_h2h_bans.most_common(8), columns=['Hero', 'Bans']), 
+        "t2_bans_df": pd.DataFrame(t2_h2h_bans.most_common(8), columns=['Hero', 'Bans']),
+        "t1_overall_picks_df": pd.DataFrame(t1_overall_heroes.most_common(8), columns=['Hero', 'Picks']),
+        "t2_overall_picks_df": pd.DataFrame(t2_overall_heroes.most_common(8), columns=['Hero', 'Picks']),
+        "t1_overall_bans_df": pd.DataFrame(t1_overall_bans.most_common(8), columns=['Hero', 'Bans']),
+        "t2_overall_bans_df": pd.DataFrame(t2_overall_bans.most_common(8), columns=['Hero', 'Bans'])
+    }
+# --- MODIFICATION END ---
+
 
 def process_head_to_head_heroes(h1, h2, pooled_matches):
     games_with_both, win_h1, win_h2 = 0, 0, 0
