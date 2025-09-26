@@ -16,7 +16,7 @@ st.set_page_config(
 build_sidebar()
 
 # --- Function to encode image to Base64 ---
-def get_image_as_base64(path):
+def get_image_as_base_64(path):
     """Encodes a local image file to a Base64 string for embedding in HTML."""
     if os.path.exists(path):
         with open(path, "rb") as image_file:
@@ -43,8 +43,7 @@ if beruang_logo_base_64:
                 </p>
             </div>
         </div>
-    """, unsafe_allow_html=True) # <-- This parameter was missing
-
+    """, unsafe_allow_html=True)
 else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
@@ -95,7 +94,7 @@ else:
 
 st.markdown("---")
 # --- Liquipedia Credit using Base64 for reliability ---
-liquipedia_logo_base_64 = get_image_as_base64("Liquipedia_logo.png")
+liquipedia_logo_base_64 = get_image_as_base_64("Liquipedia_logo.png")
 if liquipedia_logo_base_64:
     st.markdown(f"""
         <div style="text-align: center; margin-top: 2rem;">
