@@ -27,7 +27,6 @@ def build_sidebar():
             if not selected_tournaments:
                 st.warning("Please select at least one tournament.")
             else:
-                # Reset data states
                 st.session_state['pooled_matches'] = None
                 st.session_state['parsed_matches'] = None
                 st.session_state['selected_tournaments'] = selected_tournaments
@@ -51,3 +50,4 @@ def build_sidebar():
             if live_tournaments_selected:
                 cleared_count = clear_cache_for_live_tournaments(live_tournaments_selected)
                 st.success(f"Cleared cache for {cleared_count} live tournament(s).")
+
