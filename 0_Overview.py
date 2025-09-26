@@ -30,23 +30,20 @@ if logo_base64:
                 content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
                 white-space: pre;
                 display: block;
-
-                /* --- FIXES FOR TEXT OVERLAP --- */
-                /* 1. Removed fixed height to let the box resize automatically */
-                padding-top: 15px;    /* 2. Added vertical padding */
-                padding-bottom: 15px;
-                line-height: 1.5 !important; /* 3. Added !important to force the style */
-
+                height: 100px;
                 margin-bottom: 15px;
                 padding-left: 65px;
+                line-height: 1.5 !important;
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-
+                
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
-                background-position: left 15px center;
+                
+                /* --- FIX: Aligned logo to the top --- */
+                background-position: left 15px top 15px;
             }}
         </style>
         """,
