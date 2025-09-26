@@ -1,38 +1,23 @@
 import streamlit as st
 from collections import defaultdict
-### --- MODIFIED --- ###
 from utils.drafting_ai import load_prediction_assets, predict_draft_outcome, get_ai_suggestions, generate_prediction_explanation
 from utils.simulation import calculate_series_score_probs
-### --- END MODIFIED --- ###
 from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
+from utils.sidebar import build_sidebar
 
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
+build_sidebar()
 
-# --- Helper function for the custom probability bar ---
 def generate_win_prob_bar(probability, title):
-    """Generates a custom HTML two-sided probability bar."""
-    blue_pct = probability * 100
-    red_pct = 100 - blue_pct
-    bar_html = f"""
-    <div style="margin-bottom: 1rem;">
-        <p style="margin-bottom: 0.25rem; font-size: 0.9em; color: #555; font-weight:bold;">{title}</p>
-        <div style="display: flex; width: 100%; height: 28px; font-weight: bold; font-size: 14px; border-radius: 5px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);">
-            <div style="width: {blue_pct:.1f}%; background-color: #3b82f6; color: white; display: flex; align-items: center; justify-content: center;">{blue_pct:.1f}%</div>
-            <div style="width: {red_pct:.1f}%; background-color: #ef4444; color: white; display: flex; align-items: center; justify-content: center;">{red_pct:.1f}%</div>
-        </div>
-    </div>
-    """
-    st.markdown(bar_html, unsafe_allow_html=True)
+    blue_pct = probability * 100; red_pct = 100 - blue_pct
+    st.markdown(f"""<p style="margin-bottom: 0.25rem; font-size: 0.9em; color: #555; font-weight:bold;">{title}</p>
+        <div style="display: flex; width: 100%; ..."><div style="width: {blue_pct:.1f}%; ...">{blue_pct:.1f}%</div><div style="width: {red_pct:.1f}%; ...">{red_pct:.1f}%</div></div>""", unsafe_allow_html=True)
 
-# --- Load Model & Data ---
 model_assets = load_prediction_assets()
-if model_assets is None:
-    st.error("Could not load the prediction model. Please train a model in the 'Admin Panel' and ensure 'draft_predictor.json' and 'draft_assets.json' are in your repository's root directory.")
-    st.stop()
+if not model_assets: st.error("Model files not found. Please train a model in the Admin Panel."); st.stop()
+if 'pooled_matches' not in st.session_state: st.warning("Please load tournament data first."); st.stop()
 
-if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
-    st.warning("Please load tournament data on the homepage first.")
-    st.stop()
+st.title("🎯 Professional Drafting Assistant")
     
 ALL_HEROES = model_assets['all_heroes']
 ALL_TEAMS = [None] + model_assets['all_teams']
