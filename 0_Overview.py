@@ -20,33 +20,30 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- NEW: Stable Sidebar Header using ::before ---
+# --- Stable Sidebar Header using ::before ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
     st.markdown(
         f"""
         <style>
             [data-testid="stSidebarNav"]::before {{
-                /* Add the title text */
                 content: "MLBB Pro-Scene Analytics";
-                
-                /* Layout and styling for the text and logo */
                 display: flex;
                 align-items: center;
-                padding-left: 15px;
                 height: 70px;
                 margin-bottom: 20px;
 
-                /* Text styling */
+                /* --- SWAPPED POSITIONS --- */
+                padding-left: 65px; /* Creates space for the logo on the left */
+                background-position: left 15px center; /* Moves logo to the left */
+
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-
-                /* Add the logo as a background image */
+                
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
-                background-position: right 15px center; /* Position logo on the far right */
             }}
         </style>
         """,
