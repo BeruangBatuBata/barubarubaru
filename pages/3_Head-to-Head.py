@@ -36,50 +36,53 @@ if mode == "Team vs. Team":
         st.header(f"{team1} vs {team2}")
         h2h_data = process_head_to_head_teams(team1, team2, pooled_matches)
         
-        if h2h_data["total_games"] == 0:
-            st.warning(f"No direct matches found between {team1} and {team2}.")
-        else:
-            col1, col2, col3 = st.columns(3)
-            col1.metric(f"{team1} Wins", h2h_data["win_counts"][team1])
-            col2.metric(f"{team2} Wins", h2h_data["win_counts"][team2])
-            col3.metric("Total Games", h2h_data["total_games"])
-            
-            st.subheader("Picks & Bans in Head-to-Head Matches")
-            c1, c2 = st.columns(2)
+        # --- MODIFICATION START: Create Tabs ---
+        h2h_tab, overall_tab = st.tabs(["Head-to-Head Stats", "Overall Stats (vs Everyone)"])
+        
+        with h2h_tab:
+            if h2h_data["total_games"] == 0:
+                st.warning(f"No direct matches found between {team1} and {team2}.")
+            else:
+                col1, col2, col3 = st.columns(3)
+                col1.metric(f"{team1} Wins", h2h_data["win_counts"][team1])
+                col2.metric(f"{team2} Wins", h2h_data["win_counts"][team2])
+                col3.metric("Total Games", h2h_data["total_games"])
+                
+                st.subheader("Picks & Bans in Head-to-Head Matches")
+                c1, c2 = st.columns(2)
 
-            def format_df_for_display(df):
-                """Helper function to reset index and start it from 1."""
-                display_df = df.reset_index(drop=True)
-                display_df.index += 1
-                return display_df
+                def format_df_for_display(df):
+                    """Helper function to reset index and start it from 1."""
+                    display_df = df.reset_index(drop=True)
+                    display_df.index += 1
+                    return display_df
 
-            with c1:
-                st.write(f"**{team1} Top Picks (vs {team2})**")
-                st.dataframe(format_df_for_display(h2h_data["t1_picks_df"]), use_container_width=True)
-                st.write(f"**{team2} Top Picks (vs {team1})**")
-                st.dataframe(format_df_for_display(h2h_data["t2_picks_df"]), use_container_width=True)
-            with c2:
-                st.write(f"**{team1} Top Bans (vs {team2})**")
-                st.dataframe(format_df_for_display(h2h_data["t1_bans_df"]), use_container_width=True)
-                st.write(f"**{team2} Top Bans (vs {team1})**")
-                st.dataframe(format_df_for_display(h2h_data["t2_bans_df"]), use_container_width=True)
+                with c1:
+                    st.write(f"**{team1} Top Picks (vs {team2})**")
+                    st.dataframe(format_df_for_display(h2h_data["t1_picks_df"]), use_container_width=True)
+                    st.write(f"**{team2} Top Picks (vs {team1})**")
+                    st.dataframe(format_df_for_display(h2h_data["t2_picks_df"]), use_container_width=True)
+                with c2:
+                    st.write(f"**{team1} Top Bans (vs {team2})**")
+                    st.dataframe(format_df_for_display(h2h_data["t1_bans_df"]), use_container_width=True)
+                    st.write(f"**{team2} Top Bans (vs {team1})**")
+                    st.dataframe(format_df_for_display(h2h_data["t2_bans_df"]), use_container_width=True)
 
-        # --- MODIFICATION START ---
-        # Display the overall performance tables
-        st.markdown("---")
-        st.subheader("Overall Tournament Performance (vs Everyone)")
-        c1_overall, c2_overall = st.columns(2)
+        with overall_tab:
+            st.subheader("Overall Tournament Performance")
+            st.info("This shows each team's general pick/ban patterns against all opponents in the selected tournaments.")
+            c1_overall, c2_overall = st.columns(2)
 
-        with c1_overall:
-            st.write(f"**{team1} Top Picks (Overall)**")
-            st.dataframe(format_df_for_display(h2h_data["t1_overall_picks_df"]), use_container_width=True)
-            st.write(f"**{team2} Top Picks (Overall)**")
-            st.dataframe(format_df_for_display(h2h_data["t2_overall_picks_df"]), use_container_width=True)
-        with c2_overall:
-            st.write(f"**{team1} Top Bans (Overall)**")
-            st.dataframe(format_df_for_display(h2h_data["t1_overall_bans_df"]), use_container_width=True)
-            st.write(f"**{team2} Top Bans (Overall)**")
-            st.dataframe(format_df_for_display(h2h_data["t2_overall_bans_df"]), use_container_width=True)
+            with c1_overall:
+                st.write(f"**{team1} Top Picks (Overall)**")
+                st.dataframe(format_df_for_display(h2h_data["t1_overall_picks_df"]), use_container_width=True)
+                st.write(f"**{team2} Top Picks (Overall)**")
+                st.dataframe(format_df_for_display(h2h_data["t2_overall_picks_df"]), use_container_width=True)
+            with c2_overall:
+                st.write(f"**{team1} Top Bans (Overall)**")
+                st.dataframe(format_df_for_display(h2h_data["t1_overall_bans_df"]), use_container_width=True)
+                st.write(f"**{team2} Top Bans (Overall)**")
+                st.dataframe(format_df_for_display(h2h_data["t2_overall_bans_df"]), use_container_width=True)
         # --- MODIFICATION END ---
 
 else: # Hero vs. Hero mode
