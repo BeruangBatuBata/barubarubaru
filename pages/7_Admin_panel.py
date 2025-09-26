@@ -1,30 +1,34 @@
 import streamlit as st
 from utils.drafting_ai import train_and_save_prediction_model
 from utils.data_processing import HERO_PROFILES
+from utils.sidebar import build_sidebar
 import os
 
+# --- Page Configuration ---
 st.set_page_config(layout="wide", page_title="Admin Panel")
+build_sidebar()
 
+# --- Page Content ---
 st.title("👑 Admin Panel")
-st.warning("This page is for advanced users. Training a new model can take several minutes.", icon="⚠️")
+st.warning("Training a new model can take several minutes and will replace the existing AI model.", icon="⚠️")
 
-st.markdown("---")
 st.header("AI Model Training")
 st.info("Use this tool to re-train the Drafting Assistant's AI model using the tournament data currently loaded in the application.")
 
-# Initialize state for downloads
+# --- Initialize state for download functionality ---
 if 'model_path_to_download' not in st.session_state:
     st.session_state.model_path_to_download = None
 if 'assets_path_to_download' not in st.session_state:
     st.session_state.assets_path_to_download = None
 
-# Check if data is loaded
+# --- Check if data is loaded and display the training button ---
 if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
-    st.error("No tournament data loaded. Please go to the homepage, select tournaments, and click 'Load Data' before training.")
+    st.error("No tournament data loaded. Please go to the Overview page, select tournaments, and click 'Load Data' before training.")
 else:
     st.success(f"**{len(st.session_state['pooled_matches'])}** matches are loaded and ready for training.")
     
     if st.button("Train New AI Model", type="primary"):
+        # Reset previous download links
         st.session_state.model_path_to_download = None
         st.session_state.assets_path_to_download = None
         
@@ -33,6 +37,7 @@ else:
                 model_filepath = "draft_predictor.json"
                 assets_filepath = "draft_assets.json"
                 
+                # This function saves the files directly to the server's disk
                 feedback = train_and_save_prediction_model(
                     st.session_state['pooled_matches'],
                     HERO_PROFILES,
@@ -40,6 +45,7 @@ else:
                     assets_filename=assets_filepath
                 )
                 
+                # Store the file paths to make them available for download
                 st.session_state.model_path_to_download = model_filepath
                 st.session_state.assets_path_to_download = assets_filepath
 
@@ -47,13 +53,14 @@ else:
         except Exception as e:
             st.error(f"An error occurred during training: {e}")
 
-# Display Download Buttons if files have been created
+# --- Display Download Buttons after files have been created ---
 if st.session_state.model_path_to_download and st.session_state.assets_path_to_download:
     st.markdown("---")
     st.subheader("Download Your New Model Files")
-    st.info("Download both files, upload them to your GitHub repository, then reboot the app.")
+    st.info("Download both files, upload them to your GitHub repository, then reboot the app to apply the changes.")
 
     try:
+        # Read the newly created files back from the server's disk
         with open(st.session_state.model_path_to_download, "rb") as fp:
             model_data = fp.read()
         with open(st.session_state.assets_path_to_download, "rb") as fp:
@@ -76,3 +83,4 @@ if st.session_state.model_path_to_download and st.session_state.assets_path_to_d
             )
     except FileNotFoundError:
         st.error("Could not find the newly created model files to offer for download. Please try training again.")
+
