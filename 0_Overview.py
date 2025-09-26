@@ -33,7 +33,7 @@ if logo_base64:
                 
                 /* === ADJUSTED FOR SMALLER IMAGE === */
                 height: 95px;             /* Reduced container height */
-                background-size: 150px;     /* Made the image smaller */
+                background-size: 100px;     /* Made the image smaller */
                 
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
