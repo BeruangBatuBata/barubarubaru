@@ -20,7 +20,7 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-logo_base64 = get_image_as_base64("beruangbatubata.jpg")
+logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
     st.markdown(
         f"""
@@ -55,7 +55,7 @@ def get_image_as_base64(path):
 # --- Main Page Content ---
 
 # Custom Branded Header
-beruang_logo_base64 = get_image_as_base64("beruangbatubata.jpg")
+beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
 if beruang_logo_base64:
     st.markdown(f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
