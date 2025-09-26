@@ -53,16 +53,16 @@ if mode == "Team vs. Team":
                 return display_df
 
             # --- MODIFICATION START ---
-            # Added more descriptive titles for the tables
+            # Updated the titles to the requested format with parentheses.
             with c1:
-                st.write(f"**{team1} Top Picks vs {team2}**")
+                st.write(f"**{team1} Top Picks (vs {team2})**")
                 st.dataframe(format_df_for_display(h2h_data["t1_picks_df"]), use_container_width=True)
-                st.write(f"**{team2} Top Picks vs {team1}**")
+                st.write(f"**{team2} Top Picks (vs {team1})**")
                 st.dataframe(format_df_for_display(h2h_data["t2_picks_df"]), use_container_width=True)
             with c2:
-                st.write(f"**{team1} Top Bans vs {team2}**")
+                st.write(f"**{team1} Top Bans (vs {team2})**")
                 st.dataframe(format_df_for_display(h2h_data["t1_bans_df"]), use_container_width=True)
-                st.write(f"**{team2} Top Bans vs {team1}**")
+                st.write(f"**{team2} Top Bans (vs {team1})**")
                 st.dataframe(format_df_for_display(h2h_data["t2_bans_df"]), use_container_width=True)
             # --- MODIFICATION END ---
 
