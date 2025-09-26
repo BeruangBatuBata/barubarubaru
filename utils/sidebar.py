@@ -2,12 +2,37 @@ import streamlit as st
 from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
 from utils.data_processing import parse_matches
 import os
+import base64
+
+def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string for embedding in HTML."""
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return None
 
 def build_sidebar():
     """
-    Creates the persistent sidebar with tournament selection tools.
-    The logo is now handled globally in 0_Overview.py.
+    Creates the persistent sidebar with the logo and tournament selection tools.
     """
+    # --- NEW: Stable Sidebar Header ---
+    logo_base64 = get_image_as_base64("beruangbatubata.png")
+    if logo_base64:
+        st.sidebar.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                <img src="data:image/png;base64,{logo_base64}" style="width: 40px; height: 40px;">
+                <div style="font-size: 1.1em; font-weight: bold; color: #fafafa; line-height: 1.3;">
+                    MLBB Pro-scene<br>
+                    Analytics<br>
+                    Dashboard
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # --- Tournament Selection ---
     with st.sidebar.expander("Tournament Selection", expanded=True):
         selected_tournaments = st.multiselect(
             "Choose tournaments:",
