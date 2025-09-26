@@ -26,44 +26,23 @@ def get_image_as_base_64(path):
 # --- Main Page Content ---
 
 # Custom Branded Header
-st.markdown("""
-    <style>
-        .custom-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 10px;
-            border-radius: 10px;
-            background-color: #262730;
-        }
-        .custom-blockquote {
-            border-left: 4px solid #4A90E2;
-            padding-left: 15px;
-            margin: 10px 0;
-            font-style: italic;
-            color: #d1d9e1;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 beruang_logo_base_64 = get_image_as_base_64("beruangbatubata.png")
 if beruang_logo_base_64:
-    # Use st.container to group the header elements
-    with st.container():
-        st.markdown('<div class="custom-header">', unsafe_allow_html=True)
-        
-        # Create two columns for the layout
-        col1, col2 = st.columns([1, 4]) # Adjust the ratio as needed
-
-        with col1:
-            st.image(f"data:image/png;base64,{beruang_logo_base_64}", width=100)
-
-        with col2:
-            st.header("MLBB Pro-Scene Analytics Dashboard")
-            st.markdown('<blockquote class="custom-blockquote">Every draft holds a lesson, and every stat is a piece of a puzzle.</blockquote>', unsafe_allow_html=True)
-            st.markdown('<p style="color: #afb8c1;">My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I\'ve always believed there\'s a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let\'s explore the real meta together.</p>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
+    # This HTML block creates the header without the extra gap
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
+            <img src="data:image/png;base64,{beruang_logo_base_64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
+            <div>
+                <h1 style="margin-bottom: 10px;">MLBB Pro-Scene Analytics Dashboard</h1>
+                <blockquote style="border-left: 4px solid #4A90E2; padding-left: 15px; margin: 10px 0; font-style: italic; color: #d1d9e1;">
+                    Every draft holds a lesson, and every stat is a piece of a puzzle.
+                </blockquote>
+                <p style="margin-top: 10px; color: #afb8c1;">
+                    My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
+                </p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
