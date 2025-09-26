@@ -2,39 +2,12 @@ import streamlit as st
 from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
 from utils.data_processing import parse_matches
 import os
-import base64
-
-def get_image_as_base64(path):
-    """Encodes a local image file to a Base64 string for embedding in HTML."""
-    if os.path.exists(path):
-        with open(path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode()
-    return None
 
 def build_sidebar():
     """
-    Creates the persistent sidebar with the logo and tournament selection tools.
+    Creates the persistent sidebar with tournament selection tools.
+    The logo is now handled globally in 0_Overview.py.
     """
-    # 1. Absolutely positioned logo, placed at the top of the sidebar
-    logo_base64 = get_image_as_base64("beruangbatubata.jpg")
-    if logo_base64:
-        st.sidebar.markdown(f"""
-            <div style="
-                position: absolute;
-                top: 20px;
-                left: 20px;
-                z-index: 1000;
-            ">
-                <img src="data:image/jpeg;base64,{logo_base64}" style="width: 250px; border-radius: 10px;">
-            </div>
-        """, unsafe_allow_html=True)
-
-    # 2. A spacer element to push the content down.
-    # Adjust the height (e.g., 8rem) to be a little more than your logo's height.
-    st.sidebar.markdown('<div style="height: 8rem;"></div>', unsafe_allow_html=True)
-
-
-    # 3. The rest of your sidebar content, which will now start below the spacer.
     with st.sidebar.expander("Tournament Selection", expanded=True):
         selected_tournaments = st.multiselect(
             "Choose tournaments:",
