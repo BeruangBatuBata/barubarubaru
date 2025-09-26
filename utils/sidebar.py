@@ -21,7 +21,7 @@ def build_sidebar():
         st.sidebar.markdown(
             f"""
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-                <img src="data:image/png;base64,{logo_base64}" style="width: 40px; height: 40px;">
+                <img src="data:image/png;base64,{logo_base64}" style="width: 40px; height: 50px;">
                 <div style="font-size: 1.1em; font-weight: bold; color: #fafafa; line-height: 1.3;">
                     MLBB Pro-scene<br>
                     Analytics<br>
