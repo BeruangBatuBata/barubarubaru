@@ -64,8 +64,7 @@ with st.sidebar:
 # Header with personal logo
 col1, col2 = st.columns([1, 10])
 with col1:
-    # Replace with a direct URL to your image
-    st.image("https://i.imgur.com/v4HLG2I.png", width=80) 
+    st.image("beruangbatubata.jpg", width=80) 
 with col2:
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
@@ -105,7 +104,6 @@ else:
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
         most_banned = df_stats.loc[df_stats['Bans'].idxmax()]
         
-        # Filter for heroes with a reasonable number of games for win rate
         min_games = 10
         df_min_games = df_stats[df_stats['Picks'] >= min_games]
         highest_wr = df_min_games.loc[df_min_games['Win Rate (%)'].idxmax()] if not df_min_games.empty else None
