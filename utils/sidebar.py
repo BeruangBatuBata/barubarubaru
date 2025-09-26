@@ -5,13 +5,12 @@ import os
 
 def build_sidebar():
     """
-    Creates the persistent sidebar with the logo, navigation title, and tournament selection tools.
-    This function will be called on every page.
+    Creates the persistent sidebar with the logo and tournament selection tools.
+    The page navigation is now handled by st_pages in 0_Overview.py.
     """
     # --- Branded Header ---
     if os.path.exists("beruangbatubata.jpg"):
         st.sidebar.image("beruangbatubata.jpg", width=80)
-    st.sidebar.title("Navigation")
 
     # --- Tournament Selection ---
     with st.sidebar.expander("Tournament Selection", expanded=True):
@@ -50,4 +49,3 @@ def build_sidebar():
             if live_tournaments_selected:
                 cleared_count = clear_cache_for_live_tournaments(live_tournaments_selected)
                 st.success(f"Cleared cache for {cleared_count} live tournament(s).")
-
