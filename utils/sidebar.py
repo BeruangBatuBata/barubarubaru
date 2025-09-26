@@ -49,7 +49,12 @@ def build_sidebar():
         sorted_regions = ['International'] + sorted([r for r in tournaments_by_region if r != 'International'])
         sorted_years = sorted(tournaments_by_year.keys(), reverse=True)
 
-        # --- Callback Functions for Select/Deselect All ---
+        # --- Callback Functions for State Synchronization ---
+        def sync_checkbox_state(key):
+            # This function is called when a checkbox changes.
+            # It updates the central dictionary with the new value from the widget.
+            st.session_state.tournament_selections[key] = st.session_state[f"chk_{key}"]
+
         def select_all(group, value=True):
             for t_name in group:
                 st.session_state.tournament_selections[t_name] = value
@@ -66,7 +71,13 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{region}", on_click=select_all, args=(region_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in region_tournaments:
-                        st.session_state.tournament_selections[t_name] = st.checkbox(t_name, value=st.session_state.tournament_selections.get(t_name, False), key=t_name)
+                        st.checkbox(
+                            t_name, 
+                            value=st.session_state.tournament_selections[t_name], 
+                            key=f"chk_{t_name}", # Unique key for the widget itself
+                            on_change=sync_checkbox_state, 
+                            args=(t_name,) # Pass the tournament name to the callback
+                        )
         
         with year_tab:
             for year in sorted_years:
@@ -77,15 +88,21 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{year}", on_click=select_all, args=(year_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in year_tournaments:
-                        # Use the same key to sync selections between tabs
-                        st.checkbox(t_name, value=st.session_state.tournament_selections.get(t_name, False), key=t_name)
+                        # This checkbox will now correctly sync with the one in the other tab
+                         st.checkbox(
+                            t_name, 
+                            value=st.session_state.tournament_selections[t_name], 
+                            key=f"chk_{t_name}", 
+                            on_change=sync_checkbox_state, 
+                            args=(t_name,)
+                        )
 
         # --- Data Loading and Cache Clearing Logic ---
         st.markdown("---")
         selected_tournaments = [name for name, selected in st.session_state.tournament_selections.items() if selected]
 
         if st.button("Load Data", type="primary"):
-            st.cache_data.clear() # Clear function/data cache
+            st.cache_data.clear()
             if not selected_tournaments:
                 st.warning("Please select at least one tournament.")
             else:
