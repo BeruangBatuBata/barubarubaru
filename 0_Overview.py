@@ -20,36 +20,30 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- NEW: Custom HTML Sidebar Header ---
+# --- Custom HTML Sidebar Header ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
-    st.markdown(
+    # --- FIX: Changed st.markdown to st.sidebar.markdown ---
+    st.sidebar.markdown(
         f"""
         <style>
-            /* Push the page navigation links down to make space for our custom header */
             [data-testid="stSidebarNav"] {{
                 padding-top: 75px;
             }}
-
-            /* The container for our custom header */
             .custom-sidebar-header {{
                 position: absolute;
                 top: 20px;
                 left: 20px;
                 display: flex;
                 align-items: center;
-                gap: 10px; /* Creates space between the title and logo */
+                gap: 10px;
                 z-index: 1000;
             }}
-
-            /* Style for the title text */
             .sidebar-title {{
-                font-size: 1em; /* 1em is the standard font size */
+                font-size: 1em;
                 font-weight: bold;
-                color: #fafafa; /* Matches Streamlit's light text color */
+                color: #fafafa;
             }}
-
-            /* Style for the logo image */
             .sidebar-logo {{
                 width: 40px;
                 height: 40px;
