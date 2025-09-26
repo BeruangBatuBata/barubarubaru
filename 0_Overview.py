@@ -27,23 +27,27 @@ if logo_base64:
         f"""
         <style>
             [data-testid="stSidebarNav"]::before {{
-                content: "MLBB Pro-Scene Analytics";
-                display: flex;
-                align-items: center;
-                height: 70px;
-                margin-bottom: 20px;
+                /* 1. Multi-line title using \A for line breaks */
+                content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
+                /* 2. This makes the line breaks render correctly */
+                white-space: pre;
 
-                /* --- SWAPPED POSITIONS --- */
-                padding-left: 65px; /* Creates space for the logo on the left */
-                background-position: left 15px center; /* Moves logo to the left */
+                display: block;
+                height: 100px; /* Increased height for three lines */
+                margin-bottom: 15px;
+                padding-left: 65px;
 
+                /* Text styling */
                 font-size: 1.1em;
+                line-height: 1.3; /* Adjusts spacing between lines */
                 font-weight: bold;
                 color: #fafafa;
                 
+                /* Logo styling */
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
+                background-position: left 15px center;
             }}
         </style>
         """,
