@@ -27,8 +27,8 @@ if logo_base64:
         f"""
         <style>
             [data-testid="stSidebarNav"]::before {{
-                /* Multi-line title using \A for line breaks */
-                content: "MLBB Pro-scene\AAnalytics\ADashboard";
+                /* --- FIX: Corrected \\A to \A --- */
+                content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
                 white-space: pre;
 
                 display: block;
