@@ -13,7 +13,6 @@ st.set_page_config(
 )
 
 # --- Build the shared sidebar ---
-# This single line creates the consistent sidebar.
 build_sidebar()
 
 # --- Function to encode image to Base64 ---
@@ -27,11 +26,11 @@ def get_image_as_base64(path):
 # --- Main Page Content ---
 
 # Custom Branded Header
-beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
-if beruang_logo_base64:
+beruang_logo_base_64 = get_image_as_base_64("beruangbatubata.png")
+if beruang_logo_base_64:
     st.markdown(f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
-            <img src="data:image/png;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
+            <img src="data:image/png;base64,{beruang_logo_base_64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
                 <h1 style="margin-bottom: 10px;">MLBB Pro-Scene Analytics Dashboard</h1>
                 
@@ -44,7 +43,8 @@ if beruang_logo_base64:
                 </p>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True) # <-- This parameter was missing
+
 else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
@@ -69,9 +69,9 @@ else:
     pooled_matches = st.session_state['pooled_matches']
     st.success(f"**Data Loaded:** Analyzing **{len(st.session_state['parsed_matches'])}** matches from **{len(st.session_state['selected_tournaments'])}** tournament(s).")
     st.header("Meta Snapshot")
-    
+
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
-    
+
     if not df_stats.empty:
         # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
@@ -95,18 +95,18 @@ else:
 
 st.markdown("---")
 # --- Liquipedia Credit using Base64 for reliability ---
-liquipedia_logo_base64 = get_image_as_base64("Liquipedia_logo.png")
-if liquipedia_logo_base64:
+liquipedia_logo_base_64 = get_image_as_base64("Liquipedia_logo.png")
+if liquipedia_logo_base_64:
     st.markdown(f"""
         <div style="text-align: center; margin-top: 2rem;">
             <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
             <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                <img src="data:image/png;base64,{liquipedia_logo_base64}" width="200">
+                <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="200">
             </a>
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo is missing
+    # Fallback if the logo file is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
