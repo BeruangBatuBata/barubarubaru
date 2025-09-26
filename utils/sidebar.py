@@ -2,17 +2,42 @@ import streamlit as st
 from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
 from utils.data_processing import parse_matches
 import os
+import base64
+
+def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string for embedding in HTML."""
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return None
 
 def build_sidebar():
     """
     Creates the persistent sidebar with the logo and tournament selection tools.
-    The page navigation is now handled by st_pages in 0_Overview.py.
     """
-    # --- Branded Header ---
-    if os.path.exists("beruangbatubata.jpg"):
-        st.sidebar.image("beruangbatubata.jpg", width=80)
+    # --- Logo at the top-left of the sidebar ---
+    logo_base64 = get_image_as_base64("beruangbatubata.jpg")
+    if logo_base64:
+        st.sidebar.markdown(f"""
+            <style>
+                [data-testid="stSidebar"] > div:first-child {{
+                    padding-top: 5rem;
+                }}
+            </style>
+            <div style="
+                position: absolute;
+                top: 25px;
+                left: 25px;
+                z-index: 1000;
+            ">
+                <img src="data:image/jpeg;base64,{logo_base64}" style="width: 250px; border-radius: 10px;">
+            </div>
+        """, unsafe_allow_html=True)
+
 
     # --- Tournament Selection ---
+    st.sidebar.header("Tournament Selection")
+    
     with st.sidebar.expander("Tournament Selection", expanded=True):
         selected_tournaments = st.multiselect(
             "Choose tournaments:",
