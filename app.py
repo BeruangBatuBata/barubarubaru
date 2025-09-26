@@ -143,7 +143,7 @@ if liquipedia_logo_base64:
         <div style="text-align: center; margin-top: 2rem;">
             <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
             <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                <img src="data:image/png;base64,{liquipedia_logo_base64}" width="200">
+                <img src="data:image/png;base64,{liquipedia_logo_base64}" width="100">
             </a>
         </div>
     """, unsafe_allow_html=True)
