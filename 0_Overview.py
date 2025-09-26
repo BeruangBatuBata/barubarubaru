@@ -28,7 +28,7 @@ if logo_base64:
         <style>
             [data-testid="stSidebarNav"]::before {{
                 /* Multi-line title using \A for line breaks */
-                content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
+                content: "MLBB Pro-scene<br>Analytics\\ADashboard";
                 white-space: pre;
 
                 display: block;
