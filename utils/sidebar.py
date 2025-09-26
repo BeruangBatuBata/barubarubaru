@@ -22,7 +22,7 @@ def build_sidebar():
             f"""
             <div style="display: flex;align-items: center; gap: 0px; margin-bottom: 20px;">
                 <img src="data:image/png;base64,{logo_base64}" style="width: 40px; height: 60px;margin-right: 0px;">
-                <div style="font-size: 1.4em; font-weight: bold; color: #fafafa; line-height: 1.3;">
+                <div style="font-size: 2em; font-weight: bold; color: #fafafa; line-height: 1.3;">
                     MLBB Pro-scene<br>
                     Analytics Dashboard
                 </div>
