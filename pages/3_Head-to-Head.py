@@ -35,6 +35,7 @@ if mode == "Team vs. Team":
     else:
         st.header(f"{team1} vs {team2}")
         h2h_data = process_head_to_head_teams(team1, team2, pooled_matches)
+        
         if h2h_data["total_games"] == 0:
             st.warning(f"No direct matches found between {team1} and {team2}.")
         else:
@@ -52,8 +53,6 @@ if mode == "Team vs. Team":
                 display_df.index += 1
                 return display_df
 
-            # --- MODIFICATION START ---
-            # Updated the titles to the requested format with parentheses.
             with c1:
                 st.write(f"**{team1} Top Picks (vs {team2})**")
                 st.dataframe(format_df_for_display(h2h_data["t1_picks_df"]), use_container_width=True)
@@ -64,7 +63,24 @@ if mode == "Team vs. Team":
                 st.dataframe(format_df_for_display(h2h_data["t1_bans_df"]), use_container_width=True)
                 st.write(f"**{team2} Top Bans (vs {team1})**")
                 st.dataframe(format_df_for_display(h2h_data["t2_bans_df"]), use_container_width=True)
-            # --- MODIFICATION END ---
+
+        # --- MODIFICATION START ---
+        # Display the overall performance tables
+        st.markdown("---")
+        st.subheader("Overall Tournament Performance (vs Everyone)")
+        c1_overall, c2_overall = st.columns(2)
+
+        with c1_overall:
+            st.write(f"**{team1} Top Picks (Overall)**")
+            st.dataframe(format_df_for_display(h2h_data["t1_overall_picks_df"]), use_container_width=True)
+            st.write(f"**{team2} Top Picks (Overall)**")
+            st.dataframe(format_df_for_display(h2h_data["t2_overall_picks_df"]), use_container_width=True)
+        with c2_overall:
+            st.write(f"**{team1} Top Bans (Overall)**")
+            st.dataframe(format_df_for_display(h2h_data["t1_overall_bans_df"]), use_container_width=True)
+            st.write(f"**{team2} Top Bans (Overall)**")
+            st.dataframe(format_df_for_display(h2h_data["t2_overall_bans_df"]), use_container_width=True)
+        # --- MODIFICATION END ---
 
 else: # Hero vs. Hero mode
     col1, col2 = st.columns(2)
