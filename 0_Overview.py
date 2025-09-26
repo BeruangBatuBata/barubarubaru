@@ -20,35 +20,58 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Stable Sidebar Header using ::before ---
+# --- Final Version: Robust HTML Sidebar Header ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
-    st.markdown(
+    st.sidebar.markdown(
         f"""
         <style>
-            [data-testid="stSidebarNav"]::before {{
-                /* --- FIX: Using \\A in the f-string to generate a single \A in CSS --- */
-                content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
-                white-space: pre;
+            /* 1. Force the main sidebar container to be a positioning context */
+            [data-testid="stSidebar"] {{
+                position: relative;
+            }}
 
-                display: block;
-                height: 100px;
-                margin-bottom: 15px;
-                padding-left: 65px;
-                line-height: 1.5;
+            /* 2. Position the custom header within the sidebar */
+            .custom-header {{
+                position: absolute;
+                top: 20px;
+                left: 15px;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                z-index: 1000;
+            }}
+
+            /* 3. Style the logo and title */
+            .custom-header img {{
+                width: 40px;
+                height: 40px;
+            }}
+            .custom-header .title {{
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-                
-                background-image: url("data:image/png;base64,{logo_base64}");
-                background-repeat: no-repeat;
-                background-size: 40px;
-                background-position: left 15px center;
+                line-height: 1.3;
+            }}
+
+            /* 4. Push the navigation links down to make space */
+            [data-testid="stSidebarNav"] {{
+                margin-top: 100px;
             }}
         </style>
+
+        <div class="custom-header">
+            <img src="data:image/png;base64,{logo_base64}">
+            <div class="title">
+                MLBB Pro-scene<br>
+                Analytics<br>
+                Dashboard
+            </div>
+        </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 # --- Build the shared sidebar ---
 build_sidebar()
@@ -92,9 +115,9 @@ else:
     pooled_matches = st.session_state['pooled_matches']
     st.success(f"**Data Loaded:** Analyzing **{len(st.session_state['parsed_matches'])}** matches from **{len(st.session_state['selected_tournaments'])}** tournament(s).")
     st.header("Meta Snapshot")
-    
+
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
-    
+
     if not df_stats.empty:
         # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
