@@ -20,8 +20,13 @@ pooled_matches = st.session_state['pooled_matches']
 played_matches = [match for match in pooled_matches if any(game.get("winner") for game in match.get("match2games", []))]
 all_teams = sorted(list(set(opp.get('name','').strip() for match in played_matches for opp in match.get("match2opponents", []) if opp.get('name'))))
 
-st.sidebar.header("Statistics Filters")
-selected_team = st.sidebar.selectbox("Filter by Team:", ["All Teams"] + all_teams, index=0)
+# --- MODIFICATION START ---
+# Filter is now on the main page, not the sidebar
+col1_filter, col2_sort, col3_order, col4_download = st.columns([2, 2, 2, 1])
+
+with col1_filter:
+    selected_team = st.selectbox("Filter by Team:", ["All Teams"] + all_teams, index=0)
+# --- MODIFICATION END ---
 
 st.info(f"Displaying hero statistics for **{selected_team}** in the selected tournaments: **{', '.join(st.session_state['selected_tournaments'])}**")
 
@@ -31,20 +36,27 @@ with st.spinner(f"Calculating stats for {selected_team}..."):
 if df_stats.empty:
     st.warning(f"No match data found for '{selected_team}' in the selected tournaments.")
 else:
-    col1, col2, col3 = st.columns(3)
-    sort_column = col1.selectbox("Sort by:", options=df_stats.columns, index=list(df_stats.columns).index("Presence (%)"))
-    sort_order = col2.radio("Order:", options=["Descending", "Ascending"], horizontal=True)
-    
+    # --- MODIFICATION START ---
+    # Moved the sort and download controls into the columns defined earlier
+    with col2_sort:
+        sort_column = st.selectbox("Sort by:", options=df_stats.columns, index=list(df_stats.columns).index("Presence (%)"))
+    with col3_order:
+        sort_order = st.radio("Order:", options=["Descending", "Ascending"], horizontal=True, label_visibility="collapsed")
+    # --- MODIFICATION END ---
+
     df_display = df_stats.sort_values(by=sort_column, ascending=(sort_order == "Ascending")).reset_index(drop=True)
     df_display.index += 1
     
     st.dataframe(df_display, use_container_width=True)
     
     csv = df_display.to_csv(index=False).encode('utf-8')
-    with col3:
+    # --- MODIFICATION START ---
+    # Moved the download button into the layout columns
+    with col4_download:
         st.download_button(
            label="📥 Download as CSV",
            data=csv,
            file_name=f'hero_stats_{selected_team}.csv',
            mime='text/csv',
         )
+    # --- MODIFICATION END ---
