@@ -13,7 +13,6 @@ st.set_page_config(
 )
 
 # --- Build the shared sidebar ---
-# This single line creates the consistent sidebar on every page
 build_sidebar()
 
 # --- Function to encode image to Base64 ---
@@ -31,11 +30,16 @@ beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
 if beruang_logo_base64:
     st.markdown(f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
-            <img src="data:image/jpeg;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
+            <img src="data:image/png;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
-                <h1 style="margin-bottom: 5px;">MLBB Pro-Scene Analytics Dashboard</h1>
-                <p style="margin: 0; color: #afb8c1;">
-                    Every draft holds a lesson, and every stat is a piece of a puzzle. My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
+                <h1 style="margin-bottom: 10px;">MLBB Pro-Scene Analytics Dashboard</h1>
+                
+                <blockquote style="border-left: 4px solid #4A90E2; padding-left: 15px; margin: 10px 0; font-style: italic; color: #d1d9e1;">
+                    Every draft holds a lesson, and every stat is a piece of a puzzle.
+                </blockquote>
+
+                <p style="margin-top: 10px; color: #afb8c1;">
+                    My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
                 </p>
             </div>
         </div>
