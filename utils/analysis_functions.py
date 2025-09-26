@@ -1,6 +1,8 @@
 import pandas as pd
 from collections import defaultdict, Counter
 import itertools
+from datetime import datetime, timedelta
+import streamlit as st
 
 def calculate_hero_stats_for_team(pooled_matches, team_filter="All Teams"):
     """
@@ -284,3 +286,528 @@ def calculate_standings(played_matches):
             diffs[teamB] += scoreB - scoreA
             diffs[teamA] += scoreA - scoreB
     return wins, losses, diffs
+
+def analyze_trending_synergies(pooled_matches, team_filter, min_games, top_n, direction='up'):
+    """
+    Analyzes hero duo performance trends comparing current week vs previous week.
+    """
+    
+    # First, we need to separate matches by time period
+    current_date = datetime.now()
+    one_week_ago = current_date - timedelta(days=7)
+    two_weeks_ago = current_date - timedelta(days=14)
+    
+    # Separate matches into two periods
+    current_week_matches = []
+    previous_week_matches = []
+    
+    for match in pooled_matches:
+        # Get match date - this assumes matches have a timestamp field
+        match_date = None
+        
+        # Try different possible date fields and formats
+        if 'timestamp' in match:
+            try:
+                match_date = datetime.fromtimestamp(match['timestamp'])
+            except:
+                pass
+        elif 'date' in match:
+            # Try multiple date formats
+            date_formats = [
+                '%Y-%m-%d %H:%M:%S',  # Full datetime
+                '%Y-%m-%d %H:%M',     # Date time without seconds
+                '%Y-%m-%d',           # Just date
+                '%Y-%m-%dT%H:%M:%S',  # ISO format
+                '%Y-%m-%dT%H:%M:%SZ', # ISO format with Z
+            ]
+            
+            for fmt in date_formats:
+                try:
+                    match_date = datetime.strptime(match['date'], fmt)
+                    break
+                except ValueError:
+                    continue
+                    
+        elif 'datetime' in match:
+            try:
+                match_date = datetime.strptime(match['datetime'], '%Y-%m-%dT%H:%M:%S')
+            except:
+                try:
+                    match_date = datetime.strptime(match['datetime'], '%Y-%m-%d %H:%M:%S')
+                except:
+                    pass
+        
+        if match_date:
+            if match_date >= one_week_ago:
+                current_week_matches.append(match)
+            elif two_weeks_ago <= match_date < one_week_ago:
+                previous_week_matches.append(match)
+    
+    # If no date field found or all parsing failed, fall back to using match index
+    if not current_week_matches and not previous_week_matches:
+        st.warning("No date information found in matches. Using match order instead (assuming newer matches are later in the list).")
+        total_matches = len(pooled_matches)
+        split_point = total_matches // 2
+        previous_week_matches = pooled_matches[:split_point]
+        current_week_matches = pooled_matches[split_point:]
+    
+    # Rest of the function remains the same...
+    def calculate_period_stats(matches):
+        duo_counter = defaultdict(lambda: {"games": 0, "wins": 0})
+        
+        for match in matches:
+            teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
+            for game in match.get("match2games", []):
+                winner = str(game.get("winner", ""))
+                for idx, opp in enumerate(game.get("opponents", [])):
+                    team_name = teams_names[idx] if idx < len(teams_names) else ""
+                    if team_filter != "All Teams" and team_name != team_filter:
+                        continue
+                    
+                    players = [p["champion"] for p in opp.get("players", []) 
+                              if isinstance(p, dict) and "champion" in p]
+                    
+                    for h1, h2 in itertools.combinations(sorted(players), 2):
+                        duo_counter[(h1, h2)]["games"] += 1
+                        if str(idx + 1) == winner:
+                            duo_counter[(h1, h2)]["wins"] += 1
+        
+        return duo_counter
+    
+    current_stats = calculate_period_stats(current_week_matches)
+    previous_stats = calculate_period_stats(previous_week_matches)
+    
+    # Calculate trends
+    trend_rows = []
+    
+    for duo, current_data in current_stats.items():
+        if duo in previous_stats:
+            prev_games = previous_stats[duo]["games"]
+            curr_games = current_data["games"]
+            
+            # Only include if minimum games met in BOTH periods
+            if prev_games >= min_games and curr_games >= min_games:
+                prev_wins = previous_stats[duo]["wins"]
+                curr_wins = current_data["wins"]
+                
+                prev_win_rate = (prev_wins / prev_games * 100) if prev_games > 0 else 0
+                curr_win_rate = (curr_wins / curr_games * 100) if curr_games > 0 else 0
+                change = curr_win_rate - prev_win_rate
+                
+                # Calculate which team uses this duo most (for current period)
+                team_usage = defaultdict(int)
+                for match in current_week_matches:
+                    teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
+                    for game in match.get("match2games", []):
+                        for idx, opp in enumerate(game.get("opponents", [])):
+                            team_name = teams_names[idx] if idx < len(teams_names) else ""
+                            players = [p["champion"] for p in opp.get("players", []) 
+                                     if isinstance(p, dict) and "champion" in p]
+                            if duo[0] in players and duo[1] in players:
+                                team_usage[team_name] += 1
+                
+                most_used_by = max(team_usage.items(), key=lambda x: x[1])[0] if team_usage else "N/A"
+                most_used_count = max(team_usage.values()) if team_usage else 0
+                
+                trend_rows.append({
+                    "Hero 1": duo[0],
+                    "Hero 2": duo[1],
+                    "Current Win Rate (%)": round(curr_win_rate, 2),
+                    "Previous Win Rate (%)": round(prev_win_rate, 2),
+                    "Change (%)": round(change, 2),
+                    "Current Games": curr_games,
+                    "Previous Games": prev_games,
+                    "Most Used By": f"{most_used_by} ({most_used_count}g)"
+                })
+    
+    # Create DataFrame and sort
+    df = pd.DataFrame(trend_rows)
+    
+    if df.empty:
+        return df
+    
+    # Sort by change (descending for 'up', ascending for 'down')
+    df = df.sort_values("Change (%)", ascending=(direction == 'down'))
+    
+    # Filter based on direction
+    if direction == 'up':
+        df = df[df["Change (%)"] > 0]
+    else:  # direction == 'down'
+        df = df[df["Change (%)"] < 0]
+    
+    return df.head(top_n)
+
+
+# Also update the original analyze_synergy_combos to include extra data for enhanced tooltips
+def analyze_synergy_combos_enhanced(pooled_matches, team_filter, min_games, top_n, find_anti_synergy=False, focus_hero=None):
+    """
+    Enhanced version that includes additional data for tooltips.
+    """
+    from datetime import datetime
+    
+    # Get base results with enhanced tracking
+    duo_counter = defaultdict(lambda: {
+        "games": 0, 
+        "wins": 0, 
+        "teams": defaultdict(int), 
+        "last_played": None,
+        "match_dates": []  # Track all match dates for better last played info
+    })
+    
+    for match in pooled_matches:
+        teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
+        
+        # Try to get match date
+        match_date = None
+        if 'timestamp' in match:
+            try:
+                match_date = datetime.fromtimestamp(match['timestamp'])
+            except:
+                pass
+        elif 'date' in match:
+            # Handle the date format we discovered: YYYY-MM-DD HH:MM:SS
+            try:
+                match_date = datetime.strptime(match['date'], '%Y-%m-%d %H:%M:%S')
+            except:
+                # Try other formats as fallback
+                date_formats = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%SZ']
+                for fmt in date_formats:
+                    try:
+                        match_date = datetime.strptime(match['date'], fmt)
+                        break
+                    except:
+                        continue
+        
+        for game in match.get("match2games", []):
+            winner = str(game.get("winner", ""))
+            for idx, opp in enumerate(game.get("opponents", [])):
+                team_name = teams_names[idx] if idx < len(teams_names) else ""
+                if team_filter != "All Teams" and team_name != team_filter:
+                    continue
+                
+                players = [p["champion"] for p in opp.get("players", []) 
+                          if isinstance(p, dict) and "champion" in p]
+                
+                for h1, h2 in itertools.combinations(sorted(players), 2):
+                    if focus_hero and focus_hero not in [h1, h2]:
+                        continue
+                    
+                    duo_key = (h1, h2)
+                    duo_counter[duo_key]["games"] += 1
+                    
+                    if str(idx + 1) == winner:
+                        duo_counter[duo_key]["wins"] += 1
+                    
+                    # Track team usage
+                    if team_name:  # Only count if we have a team name
+                        duo_counter[duo_key]["teams"][team_name] += 1
+                    
+                    # Track match dates
+                    if match_date:
+                        duo_counter[duo_key]["match_dates"].append(match_date)
+    
+    # Build results
+    rows = []
+    current_time = datetime.now()
+    
+    for (h1, h2), stats in duo_counter.items():
+        if stats["games"] >= min_games:
+            # Find most used by team
+            if stats["teams"]:
+                most_used_team = max(stats["teams"].items(), key=lambda x: x[1])
+                most_used_by = f"{most_used_team[0]} ({most_used_team[1]}g)"
+            else:
+                most_used_by = "N/A"
+            
+            # Calculate last played
+            last_played = "N/A"
+            if stats["match_dates"]:
+                # Sort dates and get the most recent
+                stats["match_dates"].sort(reverse=True)
+                last_match_date = stats["match_dates"][0]
+                
+                # Calculate days ago
+                if isinstance(last_match_date, datetime):
+                    # Handle future dates (your data is from 2025)
+                    if last_match_date > current_time:
+                        last_played = "Future match"
+                    else:
+                        days_diff = (current_time - last_match_date).days
+                        if days_diff == 0:
+                            hours_diff = (current_time - last_match_date).total_seconds() / 3600
+                            if hours_diff < 1:
+                                last_played = "Less than 1 hour ago"
+                            elif hours_diff < 24:
+                                last_played = f"{int(hours_diff)} hours ago"
+                            else:
+                                last_played = "Today"
+                        elif days_diff == 1:
+                            last_played = "Yesterday"
+                        elif days_diff < 7:
+                            last_played = f"{days_diff} days ago"
+                        elif days_diff < 30:
+                            weeks = days_diff // 7
+                            last_played = f"{weeks} week{'s' if weeks > 1 else ''} ago"
+                        else:
+                            months = days_diff // 30
+                            last_played = f"{months} month{'s' if months > 1 else ''} ago"
+            
+            rows.append({
+                "Hero 1": h1,
+                "Hero 2": h2,
+                "Games Together": stats["games"],
+                "Wins": stats["wins"],
+                "Win Rate (%)": round(stats["wins"] / stats["games"] * 100, 2),
+                "Most Used By": most_used_by,
+                "Last Played": last_played
+            })
+    
+    df = pd.DataFrame(rows)
+    
+    if df.empty:
+        return df
+    
+    # Sort by win rate
+    return df.sort_values("Win Rate (%)", ascending=find_anti_synergy).head(top_n)
+
+def analyze_hero_counters(pooled_matches, selected_hero, min_games, team_filter="All Teams"):
+    """
+    Analyzes matchup data for a specific hero.
+    
+    Returns:
+        dict with 'counters' (heroes this hero beats) and 'countered_by' (heroes that beat this)
+    """
+    counters_data = defaultdict(lambda: {"games": 0, "wins": 0, "as_ally": 0, "as_enemy": 0})
+    
+    for match in pooled_matches:
+        teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
+        
+        for game in match.get("match2games", []):
+            winner = str(game.get("winner", ""))
+            opponents = game.get("opponents", [])
+            
+            if len(opponents) != 2 or not winner.isdigit():
+                continue
+            
+            # Get heroes for each team
+            team1_heroes = {p["champion"] for p in opponents[0].get("players", []) 
+                           if isinstance(p, dict) and "champion" in p}
+            team2_heroes = {p["champion"] for p in opponents[1].get("players", []) 
+                           if isinstance(p, dict) and "champion" in p}
+            
+            # Check if selected hero is in either team
+            hero_in_team1 = selected_hero in team1_heroes
+            hero_in_team2 = selected_hero in team2_heroes
+            
+            if not (hero_in_team1 or hero_in_team2):
+                continue
+            
+            # Apply team filter
+            if team_filter != "All Teams":
+                team1_name = teams_names[0] if len(teams_names) > 0 else ""
+                team2_name = teams_names[1] if len(teams_names) > 1 else ""
+                
+                if hero_in_team1 and team1_name != team_filter:
+                    continue
+                if hero_in_team2 and team2_name != team_filter:
+                    continue
+            
+            # Determine which team has our hero and if they won
+            if hero_in_team1:
+                hero_team = 1
+                enemy_heroes = team2_heroes
+                hero_won = (winner == "1")
+            else:
+                hero_team = 2
+                enemy_heroes = team1_heroes
+                hero_won = (winner == "2")
+            
+            # Record matchup data
+            for enemy in enemy_heroes:
+                counters_data[enemy]["games"] += 1
+                if hero_won:
+                    counters_data[enemy]["wins"] += 1
+                counters_data[enemy]["as_ally"] = 0  # This hero was our ally
+                counters_data[enemy]["as_enemy"] = 1  # This hero was enemy
+    
+    # Build results
+    counters_rows = []
+    countered_by_rows = []
+    
+    for enemy_hero, stats in counters_data.items():
+        if stats["games"] >= min_games:
+            win_rate = round(stats["wins"] / stats["games"] * 100, 2)
+            
+            row = {
+                "Enemy Hero": enemy_hero,
+                "Games Against": stats["games"],
+                "Wins": stats["wins"],
+                "Losses": stats["games"] - stats["wins"],
+                "Win Rate (%)": win_rate
+            }
+            
+            # If our hero has >55% win rate, it counters the enemy
+            if win_rate > 55:
+                counters_rows.append(row)
+            # If our hero has <45% win rate, it's countered by the enemy
+            elif win_rate < 45:
+                # Flip the perspective for "countered by"
+                row["Win Rate (%)"] = round(100 - win_rate, 2)  # Show enemy's win rate
+                countered_by_rows.append(row)
+    
+    # Create DataFrames - handle empty cases
+    if counters_rows:
+        counters_df = pd.DataFrame(counters_rows).sort_values("Win Rate (%)", ascending=False)
+    else:
+        # Create empty DataFrame with correct columns
+        counters_df = pd.DataFrame(columns=["Enemy Hero", "Games Against", "Wins", "Losses", "Win Rate (%)"])
+    
+    if countered_by_rows:
+        countered_by_df = pd.DataFrame(countered_by_rows).sort_values("Win Rate (%)", ascending=False)
+    else:
+        # Create empty DataFrame with correct columns
+        countered_by_df = pd.DataFrame(columns=["Enemy Hero", "Games Against", "Wins", "Losses", "Win Rate (%)"])
+    
+    return {
+        "counters": counters_df,
+        "countered_by": countered_by_df
+    }
+
+def analyze_synergy_combos_enhanced_with_duo(pooled_matches, team_filter, min_games, top_n, 
+                                            find_anti_synergy=False, focus_hero1=None, focus_hero2=None):
+    """
+    Enhanced version that can filter for specific hero duos.
+    If both focus_hero1 and focus_hero2 are specified, only shows that specific pair.
+    If only one is specified, shows all pairs containing that hero.
+    """
+    from datetime import datetime
+    
+    duo_counter = defaultdict(lambda: {
+        "games": 0, 
+        "wins": 0, 
+        "teams": defaultdict(int), 
+        "last_played": None,
+        "match_dates": []
+    })
+    
+    for match in pooled_matches:
+        teams_names = [opp.get("name", "").strip() for opp in match.get("match2opponents", [])]
+        
+        # Try to get match date
+        match_date = None
+        if 'timestamp' in match:
+            try:
+                match_date = datetime.fromtimestamp(match['timestamp'])
+            except:
+                pass
+        elif 'date' in match:
+            try:
+                match_date = datetime.strptime(match['date'], '%Y-%m-%d %H:%M:%S')
+            except:
+                date_formats = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%SZ']
+                for fmt in date_formats:
+                    try:
+                        match_date = datetime.strptime(match['date'], fmt)
+                        break
+                    except:
+                        continue
+        
+        for game in match.get("match2games", []):
+            winner = str(game.get("winner", ""))
+            for idx, opp in enumerate(game.get("opponents", [])):
+                team_name = teams_names[idx] if idx < len(teams_names) else ""
+                if team_filter != "All Teams" and team_name != team_filter:
+                    continue
+                
+                players = [p["champion"] for p in opp.get("players", []) 
+                          if isinstance(p, dict) and "champion" in p]
+                
+                for h1, h2 in itertools.combinations(sorted(players), 2):
+                    # Apply hero filters
+                    if focus_hero1 and focus_hero2:
+                        # Both heroes specified - only show this exact pair
+                        if not ({focus_hero1, focus_hero2} == {h1, h2}):
+                            continue
+                    elif focus_hero1:
+                        # Only hero1 specified - must contain this hero
+                        if focus_hero1 not in [h1, h2]:
+                            continue
+                    elif focus_hero2:
+                        # Only hero2 specified - must contain this hero
+                        if focus_hero2 not in [h1, h2]:
+                            continue
+                    
+                    duo_key = (h1, h2)
+                    duo_counter[duo_key]["games"] += 1
+                    
+                    if str(idx + 1) == winner:
+                        duo_counter[duo_key]["wins"] += 1
+                    
+                    # Track team usage
+                    if team_name:
+                        duo_counter[duo_key]["teams"][team_name] += 1
+                    
+                    # Track match dates
+                    if match_date:
+                        duo_counter[duo_key]["match_dates"].append(match_date)
+    
+    # Build results
+    rows = []
+    current_time = datetime.now()
+    
+    for (h1, h2), stats in duo_counter.items():
+        if stats["games"] >= min_games:
+            # Find most used by team
+            if stats["teams"]:
+                most_used_team = max(stats["teams"].items(), key=lambda x: x[1])
+                most_used_by = f"{most_used_team[0]} ({most_used_team[1]}g)"
+            else:
+                most_used_by = "N/A"
+            
+            # Calculate last played
+            last_played = "N/A"
+            if stats["match_dates"]:
+                stats["match_dates"].sort(reverse=True)
+                last_match_date = stats["match_dates"][0]
+                
+                if isinstance(last_match_date, datetime):
+                    if last_match_date > current_time:
+                        last_played = "Future match"
+                    else:
+                        days_diff = (current_time - last_match_date).days
+                        if days_diff == 0:
+                            hours_diff = (current_time - last_match_date).total_seconds() / 3600
+                            if hours_diff < 1:
+                                last_played = "Less than 1 hour ago"
+                            elif hours_diff < 24:
+                                last_played = f"{int(hours_diff)} hours ago"
+                            else:
+                                last_played = "Today"
+                        elif days_diff == 1:
+                            last_played = "Yesterday"
+                        elif days_diff < 7:
+                            last_played = f"{days_diff} days ago"
+                        elif days_diff < 30:
+                            weeks = days_diff // 7
+                            last_played = f"{weeks} week{'s' if weeks > 1 else ''} ago"
+                        else:
+                            months = days_diff // 30
+                            last_played = f"{months} month{'s' if months > 1 else ''} ago"
+            
+            rows.append({
+                "Hero 1": h1,
+                "Hero 2": h2,
+                "Games Together": stats["games"],
+                "Wins": stats["wins"],
+                "Win Rate (%)": round(stats["wins"] / stats["games"] * 100, 2),
+                "Most Used By": most_used_by,
+                "Last Played": last_played
+            })
+    
+    df = pd.DataFrame(rows)
+    
+    if df.empty:
+        return df
+    
+    # Sort by win rate
+    return df.sort_values("Win Rate (%)", ascending=find_anti_synergy).head(top_n)
