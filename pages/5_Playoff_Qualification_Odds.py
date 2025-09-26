@@ -3,6 +3,7 @@ import pandas as pd
 from collections import defaultdict
 from utils.simulation import *
 from utils.sidebar import build_sidebar
+from utils.analysis_functions import calculate_standings # <-- This line fixes the error
 
 st.set_page_config(layout="wide", page_title="Playoff Qualification Odds")
 build_sidebar()
