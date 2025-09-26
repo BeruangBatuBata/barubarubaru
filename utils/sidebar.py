@@ -15,17 +15,10 @@ def build_sidebar():
     """
     Creates the persistent sidebar with the logo and tournament selection tools.
     """
-    # --- Logo at the top-left of the sidebar ---
+    # 1. Absolutely positioned logo, placed at the top of the sidebar
     logo_base64 = get_image_as_base64("beruangbatubata.jpg")
     if logo_base64:
-        # Adjust the padding-top to make enough space for your logo's height
-        # Adjust top and left to position the logo precisely
         st.sidebar.markdown(f"""
-            <style>
-                [data-testid="stSidebar"] > div:first-child {{
-                    padding-top: 7rem; 
-                }}
-            </style>
             <div style="
                 position: absolute;
                 top: 20px;
@@ -36,10 +29,12 @@ def build_sidebar():
             </div>
         """, unsafe_allow_html=True)
 
+    # 2. A spacer element to push the content down.
+    # Adjust the height (e.g., 8rem) to be a little more than your logo's height.
+    st.sidebar.markdown('<div style="height: 8rem;"></div>', unsafe_allow_html=True)
 
-    # --- Tournament Selection ---
-    # The header here was redundant and has been removed.
-    
+
+    # 3. The rest of your sidebar content, which will now start below the spacer.
     with st.sidebar.expander("Tournament Selection", expanded=True):
         selected_tournaments = st.multiselect(
             "Choose tournaments:",
