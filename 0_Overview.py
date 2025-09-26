@@ -20,45 +20,35 @@ def get_image_as_base64(path):
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Custom HTML Sidebar Header ---
+# --- NEW: Stable Sidebar Header using ::before ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
-    st.sidebar.markdown(
+    st.markdown(
         f"""
         <style>
-            /* This rule, which caused the bug, has been removed.
-               [data-testid="stSidebar"] > div:first-child {{
-                   position: relative;
-               }}
-            */
-
-            [data-testid="stSidebarNav"] {{
-                padding-top: 75px;
-            }}
-            .custom-sidebar-header {{
-                position: absolute;
-                top: 20px;
-                left: 20px;
+            [data-testid="stSidebarNav"]::before {{
+                /* Add the title text */
+                content: "MLBB Pro-Scene Analytics";
+                
+                /* Layout and styling for the text and logo */
                 display: flex;
                 align-items: center;
-                gap: 10px;
-                z-index: 1000;
-            }}
-            .sidebar-title {{
-                font-size: 1em;
+                padding-left: 15px;
+                height: 70px;
+                margin-bottom: 20px;
+
+                /* Text styling */
+                font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-            }}
-            .sidebar-logo {{
-                width: 40px;
-                height: 40px;
+
+                /* Add the logo as a background image */
+                background-image: url("data:image/png;base64,{logo_base64}");
+                background-repeat: no-repeat;
+                background-size: 40px;
+                background-position: right 15px center; /* Position logo on the far right */
             }}
         </style>
-        
-        <div class="custom-sidebar-header">
-            <span class="sidebar-title">MLBB Pro-Scene Analytics Dashboard</span>
-            <img src="data:image/png;base64,{logo_base64}" class="sidebar-logo">
-        </div>
         """,
         unsafe_allow_html=True,
     )
