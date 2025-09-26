@@ -96,11 +96,9 @@ else:
     
     st.header("Meta Snapshot")
 
-    # Calculate meta stats
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
     
     if not df_stats.empty:
-        # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
         most_banned = df_stats.loc[df_stats['Bans'].idxmax()]
         
@@ -114,7 +112,6 @@ else:
         if highest_wr is not None:
             col3.metric(f"Highest Win Rate (>{min_games} games)", highest_wr['Hero'], f"{highest_wr['Win Rate (%)']:.1f}%")
 
-        # Presence Chart
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         df_presence = df_stats.sort_values("Presence (%)", ascending=False).head(10)
         st.bar_chart(df_presence.set_index('Hero')[['Pick Rate (%)', 'Ban Rate (%)']])
@@ -127,7 +124,7 @@ st.markdown("""
     <div style="text-align: center; margin-top: 2rem;">
         <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
         <a href="https://liquipedia.net/mobilelegends" target="_blank">
-            <img src="https://liquipedia.net/commons/images/liquipedia_logo_wordmark_light.png" width="200">
+            <img src="app/static/Liquipedia_logo.png" width="200">
         </a>
     </div>
 """, unsafe_allow_html=True)
