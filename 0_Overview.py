@@ -28,7 +28,8 @@ def get_image_as_base_64(path):
 # Custom Branded Header
 beruang_logo_base_64 = get_image_as_base_64("beruangbatubata.png")
 if beruang_logo_base_64:
-    st.markdown(f"""
+    # Construct the HTML string without using a triple-quoted f-string
+    html_content = f"""
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
             <img src="data:image/png;base64,{beruang_logo_base_64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
@@ -43,7 +44,8 @@ if beruang_logo_base_64:
                 </p>
             </div>
         </div>
-    """, unsafe_allow_html=True) # <-- The crucial fix is here
+    """
+    st.markdown(html_content, unsafe_allow_html=True)
 
 else:
     # Fallback if the logo is missing
