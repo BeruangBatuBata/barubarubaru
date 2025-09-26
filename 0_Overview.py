@@ -26,10 +26,11 @@ if logo_base64:
     st.sidebar.markdown(
         f"""
         <style>
-            /* Create a positioning context for the sidebar */
-            [data-testid="stSidebar"] > div:first-child {{
-                position: relative;
-            }}
+            /* This rule, which caused the bug, has been removed.
+               [data-testid="stSidebar"] > div:first-child {{
+                   position: relative;
+               }}
+            */
 
             [data-testid="stSidebarNav"] {{
                 padding-top: 75px;
