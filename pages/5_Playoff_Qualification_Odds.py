@@ -8,8 +8,10 @@ from utils.simulation import (
     load_group_config, save_group_config, run_monte_carlo_simulation_groups,
     load_tournament_format, save_tournament_format
 )
+from utils.sidebar import build_sidebar
 
 st.set_page_config(layout="wide", page_title="Playoff Qualification Odds")
+build_sidebar()
 
 # --- Page State Initialization ---
 if 'page_view' not in st.session_state:
@@ -69,42 +71,56 @@ def single_table_dashboard():
     # --- Data Prep ---
     week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in regular_season_matches))))
     
-    # --- Sidebar UI ---
-    st.sidebar.header("Simulation Controls")
-    week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
-    week_options["Pre-Season (Week 0)"] = -1
-    sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
-    cutoff_week_label = st.sidebar.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
-    cutoff_week_idx = week_options[cutoff_week_label]
-    n_sim = st.sidebar.number_input("Simulations:", 1000, 100000, 10000, 1000, key="single_sim_count")
+    # --- Simulation Controls on Main Page ---
+    st.markdown("---")
+    st.subheader("Simulation Controls")
     
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
+        week_options["Pre-Season (Week 0)"] = -1
+        sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
+        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
+        cutoff_week_idx = week_options[cutoff_week_label]
+    
+    with col2:
+        n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="single_sim_count")
+    
+    # Bracket Configuration
     if 'current_brackets' not in st.session_state or st.session_state.get('bracket_tournament') != tournament_name:
         st.session_state.current_brackets = load_bracket_config(tournament_name)['brackets']
         st.session_state.bracket_tournament = tournament_name
-        
-    with st.sidebar.expander("Configure Playoff Brackets"):
-        editable_brackets = [b.copy() for b in st.session_state.current_brackets]
-        for i, bracket in enumerate(editable_brackets):
-            cols = st.columns([4, 2, 2, 1])
-            bracket['name'] = cols[0].text_input("Name", value=bracket.get('name', ''), key=f"s_name_{i}")
-            bracket['start'] = cols[1].number_input("Start", value=bracket.get('start', 1), min_value=1, key=f"s_start_{i}")
-            end_val = bracket.get('end') or len(teams)
-            bracket['end'] = cols[2].number_input("End", value=end_val, min_value=bracket.get('start', 1), key=f"s_end_{i}")
-            if cols[3].button("🗑️", key=f"s_del_{i}"):
-                st.session_state.current_brackets.pop(i)
+    
+    with col3:
+        with st.expander("Configure Brackets"):
+            editable_brackets = [b.copy() for b in st.session_state.current_brackets]
+            for i, bracket in enumerate(editable_brackets):
+                st.markdown(f"**Bracket {i+1}**")
+                cols = st.columns([4, 2, 2, 1])
+                bracket['name'] = cols[0].text_input("Name", value=bracket.get('name', ''), key=f"s_name_{i}", label_visibility="collapsed")
+                bracket['start'] = cols[1].number_input("Start", value=bracket.get('start', 1), min_value=1, key=f"s_start_{i}", label_visibility="collapsed")
+                end_val = bracket.get('end') or len(teams)
+                bracket['end'] = cols[2].number_input("End", value=end_val, min_value=bracket.get('start', 1), key=f"s_end_{i}", label_visibility="collapsed")
+                if cols[3].button("🗑️", key=f"s_del_{i}"):
+                    st.session_state.current_brackets.pop(i)
+                    st.rerun()
+            st.session_state.current_brackets = editable_brackets
+            if st.button("Add Bracket", key="s_add_bracket"):
+                st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)})
                 st.rerun()
-        st.session_state.current_brackets = editable_brackets
-        if st.button("Save Brackets", type="primary"):
-            save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets})
-            st.success("Brackets saved!")
-            st.cache_data.clear()
-            
+            if st.button("Save Brackets", type="primary", key="s_save_brackets"):
+                save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets})
+                st.success("Brackets saved!")
+                st.cache_data.clear()
+                
     # --- Data Processing ---
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
     played = [m for m in regular_season_matches if m["date"] in cutoff_dates and m.get("winner") in ("1", "2")]
     unplayed = [m for m in regular_season_matches if m not in played]
 
-    # --- "What-If" Scenarios UI (with Weekly Grouping Restored) ---
+    # --- "What-If" Scenarios UI ---
+    st.markdown("---")
     st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
     
@@ -120,13 +136,50 @@ def single_table_dashboard():
     else:
         sorted_weeks = sorted(matches_by_week.keys())
         for i, week_idx in enumerate(sorted_weeks):
-            week_label = f"Week {week_idx + 1} ({week_blocks[week_idx][0]} to {week_blocks[week_idx][-1]})"
-            with st.expander(week_label, expanded=False):
-                for m in sorted(matches_by_week[week_idx], key=lambda x: x['date']):
-                    teamA, teamB, date, bo = m["teamA"], m["teamB"], m["date"], m["bestof"]
-                    match_key, options = (teamA, teamB, date), get_series_outcome_options(teamA, teamB, bo)
-                    outcome = st.selectbox(f"{teamA} vs {teamB} ({date})", options, format_func=lambda x: x[0], key=f"s_match_{date}_{teamA}_{teamB}")
-                    forced_outcomes[match_key] = outcome[1]
+            week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
+            with st.expander(f"📅 {week_label}", expanded=False):
+                # Group matches by date within each week
+                matches_by_date = defaultdict(list)
+                for m in matches_by_week[week_idx]:
+                    matches_by_date[m['date']].append(m)
+                
+                # Display matches grouped by date
+                for date in sorted(matches_by_date.keys()):
+                    st.markdown(f"#### 📅 {date}")
+                    
+                    # Create columns for match cards (3 per row)
+                    date_matches = matches_by_date[date]
+                    for idx in range(0, len(date_matches), 3):
+                        cols = st.columns(3)
+                        for col_idx, col in enumerate(cols):
+                            if idx + col_idx < len(date_matches):
+                                m = date_matches[idx + col_idx]
+                                teamA, teamB, bo = m["teamA"], m["teamB"], m["bestof"]
+                                match_key = (teamA, teamB, date)
+                                
+                                with col:
+                                    with st.container():
+                                        st.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px; background-color: #262730; border-radius: 10px; margin-bottom: 10px;'>{teamA} vs {teamB}</div>", unsafe_allow_html=True)
+                                        
+                                        # Get options for the match
+                                        options = get_series_outcome_options(teamA, teamB, bo)
+                                        
+                                        # Create radio button for outcome selection
+                                        selected = st.radio(
+                                            "",
+                                            options=[opt[0] for opt in options],
+                                            key=f"s_radio_{date}_{teamA}_{teamB}",
+                                            label_visibility="collapsed",
+                                            horizontal=False
+                                        )
+                                        
+                                        # Find the code for selected option
+                                        for opt_label, opt_code in options:
+                                            if opt_label == selected:
+                                                forced_outcomes[match_key] = opt_code
+                                                break
+                    
+                    st.markdown("---")
 
     # --- Simulation Call ---
     current_wins, current_diff = defaultdict(int), defaultdict(int)
@@ -138,16 +191,44 @@ def single_table_dashboard():
         s_w, s_l = (m["scoreA"], m["scoreB"]) if winner_idx == 0 else (m["scoreB"], m["scoreA"])
         current_diff[winner] += s_w - s_l
         current_diff[loser] += s_l - s_w
-        
     sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple((m["teamA"], m["teamB"], m["date"], m["bestof"]) for m in unplayed), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)
     
-    # --- Display Results ---
+    # --- Display Results (FIXED) ---
     st.markdown("---")
     st.subheader("Results")
     col1, col2 = st.columns(2)
     with col1:
-        st.write("**Current Standings**")
-        standings_df = build_standings_table(teams, played)
+        # Create a list of matches including forced outcomes
+        display_matches = played.copy()
+        
+        # Add unplayed matches with forced outcomes as if they were played
+        for m in unplayed:
+            match_key = (m["teamA"], m["teamB"], m["date"])
+            if match_key in forced_outcomes:
+                outcome_code = forced_outcomes[match_key]
+                if outcome_code != "random":
+                    # Create a copy of the match with the forced outcome
+                    predicted_match = m.copy()
+                    if outcome_code.startswith("A"):
+                        predicted_match["winner"] = "1"
+                        score_part = outcome_code[1:]
+                        if len(score_part) == 2:
+                            predicted_match["scoreA"] = int(score_part[0])
+                            predicted_match["scoreB"] = int(score_part[1])
+                    elif outcome_code.startswith("B"):
+                        predicted_match["winner"] = "2"
+                        score_part = outcome_code[1:]
+                        if len(score_part) == 2:
+                            predicted_match["scoreB"] = int(score_part[0])
+                            predicted_match["scoreA"] = int(score_part[1])
+                    display_matches.append(predicted_match)
+        
+        # Check if we have predictions
+        has_predictions = any(forced_outcomes.get((m["teamA"], m["teamB"], m["date"]), "random") != "random" for m in unplayed)
+        standings_label = "**Current Standings (including predictions)**" if has_predictions else "**Current Standings**"
+        st.write(standings_label)
+        
+        standings_df = build_standings_table(teams, display_matches)
         st.dataframe(standings_df, use_container_width=True)
     with col2:
         st.write("**Playoff Probabilities**")
@@ -166,65 +247,133 @@ def group_dashboard():
     groups = group_config.get('groups', {})
     week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in regular_season_matches))))
     
-    # --- Sidebar ---
-    st.sidebar.header("Simulation Controls")
-    cutoff_week_label = st.sidebar.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}")
-    cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
-    n_sim = st.sidebar.number_input("Simulations:", 1000, 100000, 10000, 1000, key="group_sim_count")
+    # --- Simulation Controls on Main Page ---
+    st.markdown("---")
+    st.subheader("Simulation Controls")
     
-    # --- ADD THIS ENTIRE BLOCK TO ADD THE MISSING FEATURE ---
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}")
+        cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
+    
+    with col2:
+        n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="group_sim_count")
+    
+    # Bracket and Group Configuration
     if 'current_brackets' not in st.session_state or st.session_state.get('bracket_tournament') != tournament_name:
         st.session_state.current_brackets = load_bracket_config(tournament_name)['brackets']
         st.session_state.bracket_tournament = tournament_name
     
-    with st.sidebar.expander("Configure Playoff Brackets"):
-        editable_brackets = [b.copy() for b in st.session_state.current_brackets]
-        for i, bracket in enumerate(editable_brackets):
-            cols = st.columns([4, 2, 2, 1])
-            bracket['name'] = cols[0].text_input("Name", bracket.get('name', ''), key=f"g_name_{i}")
-            bracket['start'] = cols[1].number_input("Start", value=bracket.get('start', 1), min_value=1, key=f"g_start_{i}")
-            end_val = bracket.get('end') or len(teams)
-            bracket['end'] = cols[2].number_input("End", value=end_val, min_value=bracket.get('start', 1), key=f"g_end_{i}")
-            if cols[3].button("🗑️", key=f"g_del_{i}"):
-                st.session_state.current_brackets.pop(i)
-                st.rerun()
-        st.session_state.current_brackets = editable_brackets
-        if st.button("Save Brackets", type="primary", key="g_save_brackets"):
-            save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets})
-            st.success("Brackets saved!")
-            st.cache_data.clear()
-    # --- END OF ADDITION ---
+    with col3:
+        config_tabs = st.tabs(["Brackets", "Groups"])
+        
+        with config_tabs[0]:
+            with st.expander("Configure Brackets", expanded=False):
+                editable_brackets = [b.copy() for b in st.session_state.current_brackets]
+                for i, bracket in enumerate(editable_brackets):
+                    st.markdown(f"**Bracket {i+1}**")
+                    cols = st.columns([4, 2, 2, 1])
+                    bracket['name'] = cols[0].text_input("Name", bracket.get('name', ''), key=f"g_name_{i}", label_visibility="collapsed")
+                    bracket['start'] = cols[1].number_input("Start", value=bracket.get('start', 1), min_value=1, key=f"g_start_{i}", label_visibility="collapsed")
+                    end_val = bracket.get('end') or len(teams)
+                    bracket['end'] = cols[2].number_input("End", value=end_val, min_value=bracket.get('start', 1), key=f"g_end_{i}", label_visibility="collapsed")
+                    if cols[3].button("🗑️", key=f"g_del_{i}"):
+                        st.session_state.current_brackets.pop(i)
+                        st.rerun()
+                st.session_state.current_brackets = editable_brackets
+                if st.button("Add Bracket", key="g_add_bracket"):
+                    st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)})
+                    st.rerun()
+                if st.button("Save Brackets", type="primary", key="g_save_brackets"):
+                    save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets})
+                    st.success("Brackets saved!")
+                    st.cache_data.clear()
+        
+        with config_tabs[1]:
+            with st.expander("Configure Groups", expanded=False):
+                st.write("Edit team assignments for each group.")
+                editable_groups = st.session_state.group_config.get('groups', {})
+                for group_name, group_teams in editable_groups.items():
+                    new_teams = st.multiselect(f"Teams in {group_name}", options=teams, default=group_teams, key=f"edit_group_{group_name}")
+                    editable_groups[group_name] = new_teams
+                if st.button("Save Group Changes"):
+                    st.session_state.group_config['groups'] = editable_groups
+                    save_group_config(tournament_name, st.session_state.group_config)
+                    st.success("Group configuration updated!")
+                    st.cache_data.clear()
+                    st.rerun()
 
-    with st.sidebar.expander("Configure Groups"):
-        st.write("Edit team assignments for each group.")
-        editable_groups = st.session_state.group_config.get('groups', {})
-        for group_name, group_teams in editable_groups.items():
-            new_teams = st.multiselect(f"Teams in {group_name}", options=teams, default=group_teams, key=f"edit_group_{group_name}")
-            editable_groups[group_name] = new_teams
-        if st.button("Save Group Changes"):
-            st.session_state.group_config['groups'] = editable_groups
-            save_group_config(tournament_name, st.session_state.group_config)
-            st.success("Group configuration updated!")
-            st.cache_data.clear()
-            st.rerun()
-
-    # --- Data Processing & "What-If" (The rest of the function remains the same) ---
-    brackets = st.session_state.current_brackets # Use the potentially edited brackets
+    # --- Data Processing ---
+    brackets = st.session_state.current_brackets
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
     played = [m for m in regular_season_matches if m["date"] in cutoff_dates and m.get("winner") in ("1", "2")]
     unplayed = [m for m in regular_season_matches if m not in played]
     
+    # --- "What-If" Scenarios UI ---
+    st.markdown("---")
     st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
-    with st.expander("Set outcomes for upcoming matches", expanded=True):
-        if not unplayed: st.info("No matches left to simulate.")
-        else:
-            for m in sorted(unplayed, key=lambda x: x['date']):
-                teamA, teamB, date, bo = m["teamA"], m["teamB"], m["date"], m["bestof"]
-                match_key, options = (teamA, teamB, date), get_series_outcome_options(teamA, teamB, bo)
-                outcome = st.selectbox(f"{teamA} vs {teamB} ({date})", options, format_func=lambda x: x[0], key=f"g_match_{date}_{teamA}_{teamB}")
-                forced_outcomes[match_key] = outcome[1]
     
+    if not unplayed: 
+        st.info("No matches left to simulate.")
+    else:
+        # Group matches by week for better organization
+        matches_by_week = defaultdict(list)
+        for match in unplayed:
+            for week_idx, week_dates in enumerate(week_blocks):
+                if match['date'] in week_dates:
+                    matches_by_week[week_idx].append(match)
+                    break
+        
+        sorted_weeks = sorted(matches_by_week.keys())
+        for i, week_idx in enumerate(sorted_weeks):
+            week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
+            with st.expander(f"📅 {week_label}", expanded=False):
+                # Group matches by date within each week
+                matches_by_date = defaultdict(list)
+                for m in matches_by_week[week_idx]:
+                    matches_by_date[m['date']].append(m)
+                
+                # Display matches grouped by date
+                for date in sorted(matches_by_date.keys()):
+                    st.markdown(f"#### 📅 {date}")
+                    
+                    # Create columns for match cards (3 per row)
+                    date_matches = matches_by_date[date]
+                    for idx in range(0, len(date_matches), 3):
+                        cols = st.columns(3)
+                        for col_idx, col in enumerate(cols):
+                            if idx + col_idx < len(date_matches):
+                                m = date_matches[idx + col_idx]
+                                teamA, teamB, bo = m["teamA"], m["teamB"], m["bestof"]
+                                match_key = (teamA, teamB, date)
+                                
+                                with col:
+                                    with st.container():
+                                        st.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px; background-color: #262730; border-radius: 10px; margin-bottom: 10px;'>{teamA} vs {teamB}</div>", unsafe_allow_html=True)
+                                        
+                                        # Get options for the match
+                                        options = get_series_outcome_options(teamA, teamB, bo)
+                                        
+                                        # Create radio button for outcome selection
+                                        selected = st.radio(
+                                            "",
+                                            options=[opt[0] for opt in options],
+                                            key=f"g_radio_{date}_{teamA}_{teamB}",
+                                            label_visibility="collapsed",
+                                            horizontal=False
+                                        )
+                                        
+                                        # Find the code for selected option
+                                        for opt_label, opt_code in options:
+                                            if opt_label == selected:
+                                                forced_outcomes[match_key] = opt_code
+                                                break
+                    
+                    st.markdown("---")
+    
+    # --- Simulation Call ---
     current_wins, current_diff = defaultdict(int), defaultdict(int)
     for m in played:
         winner_idx = int(m["winner"]) - 1
@@ -236,20 +385,60 @@ def group_dashboard():
         current_diff[loser] += s_l - s_w
     sim_results = cached_group_sim(groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple((m["teamA"], m["teamB"], m["date"], m["bestof"]) for m in unplayed), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in brackets), n_sim)
     
+    # --- Display Results (FIXED) ---
+    # Create display matches including predictions
+    display_matches = played.copy()
+    for m in unplayed:
+        match_key = (m["teamA"], m["teamB"], m["date"])
+        if match_key in forced_outcomes:
+            outcome_code = forced_outcomes[match_key]
+            if outcome_code != "random":
+                predicted_match = m.copy()
+                if outcome_code.startswith("A"):
+                    predicted_match["winner"] = "1"
+                    score_part = outcome_code[1:]
+                    if len(score_part) == 2:
+                        predicted_match["scoreA"] = int(score_part[0])
+                        predicted_match["scoreB"] = int(score_part[1])
+                elif outcome_code.startswith("B"):
+                    predicted_match["winner"] = "2"
+                    score_part = outcome_code[1:]
+                    if len(score_part) == 2:
+                        predicted_match["scoreB"] = int(score_part[0])
+                        predicted_match["scoreA"] = int(score_part[1])
+                display_matches.append(predicted_match)
+    
+    has_predictions = any(forced_outcomes.get((m["teamA"], m["teamB"], m["date"]), "random") != "random" for m in unplayed)
+    standings_label = "**Current Standings (including predictions)**" if has_predictions else "**Current Standings**"
+    
     st.markdown("---"); st.subheader("Results")
     result_tabs = st.tabs(["Overall"] + sorted(groups.keys()))
     with result_tabs[0]:
         col1, col2 = st.columns(2)
         with col1:
-            st.write("**Current Standings by Group**")
+            st.write("**Current Standings by Group**" if not has_predictions else "**Current Standings by Group (including predictions)**")
             for group_name in sorted(groups.keys()):
-                st.write(f"**{group_name}**"); standings_df = build_standings_table(groups[group_name], played)
+                st.write(f"**{group_name}**")
+                standings_df = build_standings_table(groups[group_name], display_matches)  # Use display_matches
                 st.dataframe(standings_df, use_container_width=True)
         with col2:
             st.write("**Playoff Probabilities by Group**")
             if sim_results is not None and not sim_results.empty:
                 for group_name in sorted(groups.keys()):
-                    st.write(f"**{group_name}**"); group_probs = sim_results[sim_results['Group'] == group_name].drop(columns=['Group'])
+                    st.write(f"**{group_name}**")
+                    group_probs = sim_results[sim_results['Group'] == group_name].drop(columns=['Group'])
+                    st.dataframe(group_probs, use_container_width=True, hide_index=True)
+    for i, group_name in enumerate(sorted(groups.keys())):
+        with result_tabs[i+1]:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"{standings_label} ({group_name})")
+                standings_df = build_standings_table(groups[group_name], display_matches)  # Use display_matches
+                st.dataframe(standings_df, use_container_width=True)
+            with col2:
+                st.write(f"**Playoff Probabilities ({group_name})**")
+                if sim_results is not None and not sim_results.empty:
+                    group_probs = sim_results[sim_results['Group'] == group_name].drop(columns=['Group'])
                     st.dataframe(group_probs, use_container_width=True, hide_index=True)
     for i, group_name in enumerate(sorted(groups.keys())):
         with result_tabs[i+1]:
