@@ -12,6 +12,34 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- Function to encode image to Base64 ---
+def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string for embedding in HTML."""
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return None
+
+logo_base64 = get_image_as_base64("beruangbatubata.jpg")
+if logo_base64:
+    st.markdown(
+        f"""
+        <style>
+            [data-testid="stSidebarNav"]::before {{
+                content: "";
+                display: block;
+                margin-bottom: 20px;
+                height: 115px;
+                background-image: url("data:image/jpeg;base64,{logo_base64}");
+                background-size: 250px;
+                background-repeat: no-repeat;
+                background-position: 20px 20px;
+            }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # --- Build the shared sidebar ---
 # This single line creates the consistent sidebar on every page
 build_sidebar()
