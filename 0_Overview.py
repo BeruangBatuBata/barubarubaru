@@ -27,7 +27,7 @@ if logo_base64:
         f"""
         <style>
             [data-testid="stSidebarNav"]::before {{
-                /* --- FIX: Corrected \\A to \A --- */
+                /* --- FIX: Using \\A in the f-string to generate a single \A in CSS --- */
                 content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
                 white-space: pre;
 
