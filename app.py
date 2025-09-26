@@ -120,11 +120,4 @@ else:
 
 st.markdown("---")
 # --- Liquipedia Credit ---
-st.markdown("""
-    <div style="text-align: center; margin-top: 2rem;">
-        <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
-        <a href="https://liquipedia.net/mobilelegends" target="_blank">
-            st.image("Liquipedia_logo.png", width=200) 
-        </a>
-    </div>
-""", unsafe_allow_html=True)
+    st.image("Liquipedia_logo.png", width=200) 
