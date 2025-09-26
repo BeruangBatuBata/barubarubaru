@@ -29,11 +29,11 @@ if logo_base64:
                 content: "";
                 display: block;
                 margin-bottom: 20px;
-                height: 115px;
+                height: 100px;
                 background-image: url("data:image/jpeg;base64,{logo_base64}");
-                background-size: 250px;
+                background-size: 200px;
                 background-repeat: no-repeat;
-                background-position: 20px 20px;
+                background-position: 15px 15px;
             }}
         </style>
         """,
