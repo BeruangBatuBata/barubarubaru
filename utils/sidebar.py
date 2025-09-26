@@ -18,16 +18,18 @@ def build_sidebar():
     # --- Logo at the top-left of the sidebar ---
     logo_base64 = get_image_as_base64("beruangbatubata.jpg")
     if logo_base64:
+        # Adjust the padding-top to make enough space for your logo's height
+        # Adjust top and left to position the logo precisely
         st.sidebar.markdown(f"""
             <style>
                 [data-testid="stSidebar"] > div:first-child {{
-                    padding-top: 5rem;
+                    padding-top: 7rem; 
                 }}
             </style>
             <div style="
                 position: absolute;
-                top: 25px;
-                left: 25px;
+                top: 20px;
+                left: 20px;
                 z-index: 1000;
             ">
                 <img src="data:image/jpeg;base64,{logo_base64}" style="width: 250px; border-radius: 10px;">
@@ -36,7 +38,7 @@ def build_sidebar():
 
 
     # --- Tournament Selection ---
-    st.sidebar.header("Tournament Selection")
+    # The header here was redundant and has been removed.
     
     with st.sidebar.expander("Tournament Selection", expanded=True):
         selected_tournaments = st.multiselect(
