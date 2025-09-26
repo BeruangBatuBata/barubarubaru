@@ -3,6 +3,7 @@ from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache
 from utils.data_processing import parse_matches
 import os
 import base64
+from collections import defaultdict
 
 def get_image_as_base64(path):
     """Encodes a local image file to a Base64 string for embedding in HTML."""
@@ -13,9 +14,9 @@ def get_image_as_base64(path):
 
 def build_sidebar():
     """
-    Creates the persistent sidebar with the logo and tournament selection tools.
+    Creates the persistent sidebar with an advanced, tabbed tournament selection UI.
     """
-    # --- NEW: Stable Sidebar Header ---
+    # --- Sidebar Header ---
     logo_base64 = get_image_as_base64("beruangbatubata.png")
     if logo_base64:
         st.sidebar.markdown(
@@ -31,17 +32,60 @@ def build_sidebar():
             unsafe_allow_html=True
         )
 
-    # --- Tournament Selection ---
+    # --- Initialize session_state for selections ---
+    if 'tournament_selections' not in st.session_state:
+        st.session_state.tournament_selections = {name: False for name in ALL_TOURNAMENTS.keys()}
+
+    # --- Tournament Selection Expander ---
     with st.sidebar.expander("Tournament Selection", expanded=True):
-        selected_tournaments = st.multiselect(
-            "Choose tournaments:",
-            options=list(ALL_TOURNAMENTS.keys()),
-            default=st.session_state.get('selected_tournaments', []),
-            placeholder="Select one or more tournaments"
-        )
+
+        # --- Create Data Structures for Grouping ---
+        tournaments_by_region = defaultdict(list)
+        tournaments_by_year = defaultdict(list)
+        for name, data in ALL_TOURNAMENTS.items():
+            tournaments_by_region[data['region']].append(name)
+            tournaments_by_year[data['year']].append(name)
+        
+        sorted_regions = ['International'] + sorted([r for r in tournaments_by_region if r != 'International'])
+        sorted_years = sorted(tournaments_by_year.keys(), reverse=True)
+
+        # --- Callback Functions for Select/Deselect All ---
+        def select_all(group, value=True):
+            for t_name in group:
+                st.session_state.tournament_selections[t_name] = value
+        
+        # --- Tabs for Region and Year ---
+        region_tab, year_tab = st.tabs(["By Region", "By Year"])
+
+        with region_tab:
+            for region in sorted_regions:
+                with st.expander(f"{region} ({len(tournaments_by_region[region])})"):
+                    col1, col2 = st.columns(2)
+                    region_tournaments = tournaments_by_region[region]
+                    col1.button("Select All", key=f"select_all_{region}", on_click=select_all, args=(region_tournaments, True), use_container_width=True)
+                    col2.button("Deselect All", key=f"deselect_all_{region}", on_click=select_all, args=(region_tournaments, False), use_container_width=True)
+                    st.markdown("---")
+                    for t_name in region_tournaments:
+                        st.session_state.tournament_selections[t_name] = st.checkbox(t_name, value=st.session_state.tournament_selections.get(t_name, False), key=t_name)
+        
+        with year_tab:
+            for year in sorted_years:
+                with st.expander(f"Year {year} ({len(tournaments_by_year[year])})"):
+                    col1, col2 = st.columns(2)
+                    year_tournaments = tournaments_by_year[year]
+                    col1.button("Select All", key=f"select_all_{year}", on_click=select_all, args=(year_tournaments, True), use_container_width=True)
+                    col2.button("Deselect All", key=f"deselect_all_{year}", on_click=select_all, args=(year_tournaments, False), use_container_width=True)
+                    st.markdown("---")
+                    for t_name in year_tournaments:
+                        # Use the same key to sync selections between tabs
+                        st.checkbox(t_name, value=st.session_state.tournament_selections.get(t_name, False), key=t_name)
+
+        # --- Data Loading and Cache Clearing Logic ---
+        st.markdown("---")
+        selected_tournaments = [name for name, selected in st.session_state.tournament_selections.items() if selected]
 
         if st.button("Load Data", type="primary"):
-            st.cache_data.clear()
+            st.cache_data.clear() # Clear function/data cache
             if not selected_tournaments:
                 st.warning("Please select at least one tournament.")
             else:
