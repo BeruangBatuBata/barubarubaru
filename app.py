@@ -124,7 +124,7 @@ st.markdown("""
     <div style="text-align: center; margin-top: 2rem;">
         <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
         <a href="https://liquipedia.net/mobilelegends" target="_blank">
-            <img src="Liquipedia_logo.png" width="200">
+            st.image("Liquipedia_logo.png", width=200) 
         </a>
     </div>
 """, unsafe_allow_html=True)
