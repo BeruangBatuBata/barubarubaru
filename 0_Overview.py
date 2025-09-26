@@ -29,19 +29,20 @@ if logo_base64:
             [data-testid="stSidebarNav"]::before {{
                 content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
                 white-space: pre;
-
                 display: block;
-                height: 100px;
+
+                /* --- FIXES FOR TEXT OVERLAP --- */
+                /* 1. Removed fixed height to let the box resize automatically */
+                padding-top: 15px;    /* 2. Added vertical padding */
+                padding-bottom: 15px;
+                line-height: 1.5 !important; /* 3. Added !important to force the style */
+
                 margin-bottom: 15px;
                 padding-left: 65px;
-
-                /* --- FIX: Increased line-height for more space --- */
-                line-height: 1.5;
-
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-                
+
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
