@@ -12,15 +12,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Define function once at the top ---
-def get_image_as_base64(path):
-    """Encodes a local image file to a Base64 string for embedding in HTML."""
-    if os.path.exists(path):
-        with open(path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode()
-    return None
-
 # --- Final, Stable Sidebar Header ---
+# Using the stable single-line title from our last successful fix
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
     st.markdown(
@@ -37,7 +30,7 @@ if logo_base64:
                 font-size: 1.1em;
                 font-weight: bold;
                 color: #fafafa;
-                
+
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
@@ -51,7 +44,16 @@ if logo_base64:
 # --- Build the shared sidebar ---
 build_sidebar()
 
+# --- Function to encode image to Base64 ---
+def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string for embedding in HTML."""
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return None
+
 # --- Main Page Content ---
+
 # Custom Branded Header
 beruang_logo_base64 = get_image_as_base64("beruangbatubata.png")
 if beruang_logo_base64:
@@ -59,9 +61,14 @@ if beruang_logo_base64:
         <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 10px; background-color: #262730;">
             <img src="data:image/png;base64,{beruang_logo_base64}" style="width: 100px; margin-right: 20px; border-radius: 10px;">
             <div>
-                <h1 style="margin-bottom: 5px;">MLBB Pro-Scene Analytics Dashboard</h1>
-                <p style="margin: 0; color: #afb8c1;">
-                    Every draft holds a lesson, and every stat is a piece of a puzzle. My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
+                <h1 style="margin-bottom: 10px;">MLBB Pro-Scene Analytics Dashboard</h1>
+                
+                <blockquote style="border-left: 4px solid #4A90E2; padding-left: 15px; margin: 10px 0; font-style: italic; color: #d1d9e1;">
+                    Every draft holds a lesson, and every stat is a piece of a puzzle.
+                </blockquote>
+
+                <p style="margin-top: 10px; color: #afb8c1;">
+                    My name is <strong>Beruang Batu Bata</strong>, and as a passionate fan, I've always believed there's a deeper story hidden within the numbers of every pro match. I created this platform to be a place where we could all become data storytellers—to swim deeper and uncover the strategic truths that define competitive play. This tool is my contribution to the community. Let's explore the real meta together.
                 </p>
             </div>
         </div>
@@ -122,12 +129,12 @@ if liquipedia_logo_base64:
         <div style="text-align: center; margin-top: 2rem;">
             <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
             <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                <img src="data:image/png;base64,{liquipedia_logo__base64}" width="200">
+                <img src="data:image/png;base64,{liquipedia_logo_base64}" width="200">
             </a>
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo file is missing
+    # Fallback if the logo is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
