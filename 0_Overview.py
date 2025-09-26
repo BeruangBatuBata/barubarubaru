@@ -27,23 +27,21 @@ if logo_base64:
         f"""
         <style>
             [data-testid="stSidebarNav"]::before {{
-                /* 1. Multi-line title using \A for line breaks */
                 content: "MLBB Pro-scene\\AAnalytics\\ADashboard";
-                /* 2. This makes the line breaks render correctly */
                 white-space: pre;
 
                 display: block;
-                height: 100px; /* Increased height for three lines */
+                height: 100px;
                 margin-bottom: 15px;
                 padding-left: 65px;
 
-                /* Text styling */
+                /* --- FIX: Increased line-height for more space --- */
+                line-height: 1.5;
+
                 font-size: 1.1em;
-                line-height: 1.3; /* Adjusts spacing between lines */
                 font-weight: bold;
                 color: #fafafa;
                 
-                /* Logo styling */
                 background-image: url("data:image/png;base64,{logo_base64}");
                 background-repeat: no-repeat;
                 background-size: 40px;
