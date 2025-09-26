@@ -23,10 +23,14 @@ def get_image_as_base64(path):
 # --- Custom HTML Sidebar Header ---
 logo_base64 = get_image_as_base64("beruangbatubata.png")
 if logo_base64:
-    # --- FIX: Changed st.markdown to st.sidebar.markdown ---
     st.sidebar.markdown(
         f"""
         <style>
+            /* Create a positioning context for the sidebar */
+            [data-testid="stSidebar"] > div:first-child {{
+                position: relative;
+            }}
+
             [data-testid="stSidebarNav"] {{
                 padding-top: 75px;
             }}
