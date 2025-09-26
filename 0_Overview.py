@@ -1,7 +1,5 @@
 import streamlit as st
-from collections import OrderedDict
-from utils.data_processing import parse_matches
-from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
+from utils.sidebar import build_sidebar
 from utils.analysis_functions import calculate_hero_stats_for_team
 import pandas as pd
 import base64
@@ -9,72 +7,22 @@ import os
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="MLBB Analytics Dashboard",
+    page_title="MLBB Analytics Overview",
     page_icon="🎮",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
+
+# --- Build the shared sidebar ---
+build_sidebar()
 
 # --- Function to encode image to Base64 ---
 def get_image_as_base64(path):
-    """Encodes a local image file to a Base64 string for embedding in HTML."""
     if os.path.exists(path):
         with open(path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode()
     return None
 
-# --- Session State Initialization ---
-if 'selected_tournaments' not in st.session_state:
-    st.session_state['selected_tournaments'] = []
-if 'pooled_matches' not in st.session_state:
-    st.session_state['pooled_matches'] = None
-if 'parsed_matches' not in st.session_state:
-    st.session_state['parsed_matches'] = None
-
-# --- Sidebar ---
-with st.sidebar:
-    st.header("Tournament Selection")
-    selected_tournaments = st.multiselect(
-        "Choose tournaments:",
-        options=list(ALL_TOURNAMENTS.keys()),
-        default=st.session_state['selected_tournaments'],
-        placeholder="Select one or more tournaments"
-    )
-
-    if st.button("Load Data", type="primary"):
-        st.cache_data.clear()
-        if not selected_tournaments:
-            st.warning("Please select at least one tournament.")
-        else:
-            # Reset data states
-            st.session_state['pooled_matches'] = None
-            st.session_state['parsed_matches'] = None
-            st.session_state['selected_tournaments'] = selected_tournaments
-            
-            all_matches_raw = []
-            with st.spinner("Loading tournament data..."):
-                for name in selected_tournaments:
-                    matches = load_tournament_data(name)
-                    if matches:
-                        all_matches_raw.extend(matches)
-            
-            if all_matches_raw:
-                st.session_state['pooled_matches'] = all_matches_raw
-                st.session_state['parsed_matches'] = parse_matches(all_matches_raw)
-                st.success(f"Successfully loaded data for {len(selected_tournaments)} tournament(s).")
-            else:
-                st.error("Could not load any match data.")
-    
-    st.markdown("---")
-    live_tournaments_selected = [t for t in selected_tournaments if ALL_TOURNAMENTS.get(t, {}).get('live')]
-    if st.button("Clear Cache for Live Tournaments", disabled=not live_tournaments_selected):
-        if live_tournaments_selected:
-            cleared_count = clear_cache_for_live_tournaments(live_tournaments_selected)
-            st.success(f"Cleared cache for {cleared_count} live tournament(s). Click 'Load Data' to refresh.")
-
 # --- Main Page Content ---
-
-# --- MODIFIED: Custom Branded Header ---
 beruang_logo_base64 = get_image_as_base64("beruangbatubata.jpg")
 if beruang_logo_base64:
     st.markdown(f"""
@@ -89,10 +37,7 @@ if beruang_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
-# --- END MODIFIED ---
-
 
 # --- State 1: Before Data is Loaded ---
 if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
@@ -117,7 +62,6 @@ else:
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
     
     if not df_stats.empty:
-        # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
         most_banned = df_stats.loc[df_stats['Bans'].idxmax()]
         min_games = 10
@@ -137,7 +81,7 @@ else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
 st.markdown("---")
-# --- Liquipedia Credit using Base64 for reliability ---
+# --- Liquipedia Credit ---
 liquipedia_logo_base64 = get_image_as_base64("Liquipedia_logo.png")
 if liquipedia_logo_base64:
     st.markdown(f"""
@@ -149,7 +93,6 @@ if liquipedia_logo_base64:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if the logo file is missing
     st.markdown("""
         <div style="text-align: center; margin-top: 2rem;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
