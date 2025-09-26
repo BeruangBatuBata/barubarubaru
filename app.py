@@ -4,6 +4,8 @@ from utils.data_processing import parse_matches
 from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
 from utils.analysis_functions import calculate_hero_stats_for_team
 import pandas as pd
+import base64
+import os
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -12,6 +14,14 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- Function to encode image to Base64 ---
+def get_image_as_base64(path):
+    """Encodes a local image file to a Base64 string."""
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return None
 
 # --- Session State Initialization ---
 if 'selected_tournaments' not in st.session_state:
@@ -36,15 +46,18 @@ with st.sidebar:
         if not selected_tournaments:
             st.warning("Please select at least one tournament.")
         else:
+            # Reset data states
             st.session_state['pooled_matches'] = None
             st.session_state['parsed_matches'] = None
             st.session_state['selected_tournaments'] = selected_tournaments
+            
             all_matches_raw = []
             with st.spinner("Loading tournament data..."):
                 for name in selected_tournaments:
                     matches = load_tournament_data(name)
                     if matches:
                         all_matches_raw.extend(matches)
+            
             if all_matches_raw:
                 st.session_state['pooled_matches'] = all_matches_raw
                 st.session_state['parsed_matches'] = parse_matches(all_matches_raw)
@@ -64,7 +77,8 @@ with st.sidebar:
 # Header with personal logo
 col1, col2 = st.columns([1, 10])
 with col1:
-    st.image("beruangbatubata.jpg", width=80) 
+    if os.path.exists("beruangbatubata.jpg"):
+        st.image("beruangbatubata.jpg", width=80) 
 with col2:
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
@@ -96,9 +110,11 @@ else:
     
     st.header("Meta Snapshot")
 
+    # Calculate meta stats
     df_stats = calculate_hero_stats_for_team(pooled_matches, "All Teams")
     
     if not df_stats.empty:
+        # Key Metrics
         most_picked = df_stats.loc[df_stats['Picks'].idxmax()]
         most_banned = df_stats.loc[df_stats['Bans'].idxmax()]
         
@@ -112,6 +128,7 @@ else:
         if highest_wr is not None:
             col3.metric(f"Highest Win Rate (>{min_games} games)", highest_wr['Hero'], f"{highest_wr['Win Rate (%)']:.1f}%")
 
+        # Presence Chart
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         df_presence = df_stats.sort_values("Presence (%)", ascending=False).head(10)
         st.bar_chart(df_presence.set_index('Hero')[['Pick Rate (%)', 'Ban Rate (%)']])
@@ -119,5 +136,21 @@ else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
 st.markdown("---")
-# --- Liquipedia Credit ---
-st.image("Liquipedia_logo.png", width=200) 
+# --- Liquipedia Credit using Base64 for reliability ---
+liquipedia_logo_base64 = get_image_as_base64("Liquipedia_logo.png")
+if liquipedia_logo_base64:
+    st.markdown(f"""
+        <div style="text-align: center; margin-top: 2rem;">
+            <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
+            <a href="https://liquipedia.net/mobilelegends" target="_blank">
+                <img src="data:image/png;base64,{liquipedia_logo_base64}" width="200">
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    # Fallback if the logo file is missing
+    st.markdown("""
+        <div style="text-align: center; margin-top: 2rem;">
+            <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
+        </div>
+    """, unsafe_allow_html=True)
