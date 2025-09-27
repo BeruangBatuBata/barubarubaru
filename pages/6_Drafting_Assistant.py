@@ -309,6 +309,7 @@ st.markdown("---")
 # --- Main Draft Interface ---
 draft = st.session_state.draft
 prob_placeholder = st.empty()
+analysis_placeholder = st.empty()
 turn_placeholder = st.empty()
 suggestion_placeholder = st.empty()
 
@@ -358,107 +359,6 @@ for hero in draft['red_bans']:
     if hero and hero != 'None':
         taken_heroes.add(hero)
 
-blue_col, red_col = st.columns(2)
-
-# Blue team section with callbacks
-with blue_col:
-    st.header(f"🔷 {blue_team_name}")
-    st.subheader("Bans")
-    ban_cols = st.columns(5)
-    for i in range(5):
-        current_ban = st.session_state.draft['blue_bans'][i]
-        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_ban])
-        if current_ban and current_ban not in available:
-            available.append(current_ban)
-            available = [None] + sorted(available[1:])
-        
-        ban_cols[i].selectbox(
-            f"B{i+1}", 
-            available, 
-            key=f"b_ban_{i}", 
-            index=available.index(current_ban) if current_ban in available else 0,
-        )
-    
-    st.subheader("Picks")
-    for role in ROLES:
-        current_pick = st.session_state.draft['blue_picks'][role]
-        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_pick])
-        if current_pick and current_pick not in available:
-            available.append(current_pick)
-            available = [None] + sorted(available[1:])
-        
-        st.selectbox(
-            role, 
-            available, 
-            key=f"b_pick_{role}", 
-            index=available.index(current_pick) if current_pick in available else 0,
-        )
-
-# Red team section with callbacks
-with red_col:
-    st.header(f"🔶 {red_team_name}")
-    st.subheader("Bans")
-    ban_cols = st.columns(5)
-    for i in range(5):
-        current_ban = st.session_state.draft['red_bans'][i]
-        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_ban])
-        if current_ban and current_ban not in available:
-            available.append(current_ban)
-            available = [None] + sorted(available[1:])
-        
-        ban_cols[i].selectbox(
-            f"R{i+1}", 
-            available, 
-            key=f"r_ban_{i}", 
-            index=available.index(current_ban) if current_ban in available else 0,
-        )
-    
-    st.subheader("Picks")
-    for role in ROLES:
-        current_pick = st.session_state.draft['red_picks'][role]
-        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_pick])
-        if current_pick and current_pick not in available:
-            available.append(current_pick)
-            available = [None] + sorted(available[1:])
-        
-        st.selectbox(
-            role, 
-            available, 
-            key=f"r_pick_{role}", 
-            index=available.index(current_pick) if current_pick in available else 0,
-        )
-
-# --- MODIFICATION START ---
-# Moved AI analysis section here and wrapped it in a toggle
-st.toggle("Show AI Draft Analysis", key='show_ai_analysis', value=False)
-analysis_placeholder = st.empty()
-
-if st.session_state.get('show_ai_analysis', False):
-    with analysis_placeholder.container():
-        st.subheader("AI Draft Analysis")
-        c1, c2 = st.columns(2)
-        explanation = generate_prediction_explanation(list(draft['blue_picks'].values()), list(draft['red_picks'].values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
-        with c1:
-            st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
-        with c2:
-            st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
-# --- MODIFICATION END ---
-
-
-# Add a reset draft button
-if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
-    # Only reset the application's central state dictionary.
-    st.session_state.draft = {
-        'blue_team': None, 
-        'red_team': None,
-        'blue_bans': [None]*5, 
-        'red_bans': [None]*5,
-        'blue_picks': {role: None for role in ROLES},
-        'red_picks': {role: None for role in ROLES}
-    }
-    st.session_state.selected_past_game = None
-    st.rerun()
-    
 # --- Calculations ---
 blue_p = {k: v for k, v in draft['blue_picks'].items() if v}
 red_p = {k: v for k, v in draft['red_picks'].items() if v}
@@ -511,7 +411,87 @@ with prob_placeholder.container():
             st.markdown("---")
             st.markdown(f"**Series Win Probability:** {blue_team_name} **{blue_series_win_prob:.1%}** vs {red_team_name} **{red_series_win_prob:.1%}**")
 
-# --- Turn Logic & Suggestions ---
+with analysis_placeholder.container():
+    st.subheader("AI Draft Analysis")
+    c1, c2 = st.columns(2)
+    explanation = generate_prediction_explanation(list(draft['blue_picks'].values()), list(draft['red_picks'].values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
+    with c1:
+        st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
+    with c2:
+        st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
+
+
+blue_col, red_col = st.columns(2)
+
+# Blue team section
+with blue_col:
+    st.header(f"🔷 {blue_team_name}")
+    st.subheader("Bans")
+    ban_cols = st.columns(5)
+    for i in range(5):
+        current_ban = st.session_state.draft['blue_bans'][i]
+        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_ban])
+        if current_ban and current_ban not in available:
+            available.append(current_ban)
+            available = [None] + sorted(available[1:])
+        
+        ban_cols[i].selectbox(
+            f"B{i+1}", 
+            available, 
+            key=f"b_ban_{i}", 
+            index=available.index(current_ban) if current_ban in available else 0,
+        )
+    
+    st.subheader("Picks")
+    for role in ROLES:
+        current_pick = st.session_state.draft['blue_picks'][role]
+        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_pick])
+        if current_pick and current_pick not in available:
+            available.append(current_pick)
+            available = [None] + sorted(available[1:])
+        
+        st.selectbox(
+            role, 
+            available, 
+            key=f"b_pick_{role}", 
+            index=available.index(current_pick) if current_pick in available else 0,
+        )
+
+# Red team section
+with red_col:
+    st.header(f"🔶 {red_team_name}")
+    st.subheader("Bans")
+    ban_cols = st.columns(5)
+    for i in range(5):
+        current_ban = st.session_state.draft['red_bans'][i]
+        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_ban])
+        if current_ban and current_ban not in available:
+            available.append(current_ban)
+            available = [None] + sorted(available[1:])
+        
+        ban_cols[i].selectbox(
+            f"R{i+1}", 
+            available, 
+            key=f"r_ban_{i}", 
+            index=available.index(current_ban) if current_ban in available else 0,
+        )
+    
+    st.subheader("Picks")
+    for role in ROLES:
+        current_pick = st.session_state.draft['red_picks'][role]
+        available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == current_pick])
+        if current_pick and current_pick not in available:
+            available.append(current_pick)
+            available = [None] + sorted(available[1:])
+        
+        st.selectbox(
+            role, 
+            available, 
+            key=f"r_pick_{role}", 
+            index=available.index(current_pick) if current_pick in available else 0,
+        )
+
+# --- Turn Logic ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
 turn, phase = None, "DRAFT COMPLETE"
 if total_bans < 6: phase, turn = "BAN", ['B', 'R', 'B', 'R', 'B', 'R'][total_bans]
@@ -522,40 +502,50 @@ elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 
 if turn:
     team_turn = blue_team_name if turn == 'B' else red_team_name
     turn_placeholder.header(f"Turn: {team_turn} ({phase})")
+else:
+    turn_placeholder.header("📋 Draft Complete")
+    st.info("All picks and bans have been completed. Review the analysis above to understand the strengths and weaknesses of each draft.")
 
-with suggestion_placeholder.container():
-    if turn:
-        st.subheader("AI Suggestions")
-        is_blue_turn = (turn == 'B')
-        suggestions = get_ai_suggestions(
-            [h for h in ALL_HEROES if h not in taken_heroes],
-            blue_p, red_p, blue_b, red_b,
-            draft['blue_team'], draft['red_team'],
-            model_assets, HERO_PROFILES, is_blue_turn, phase
-        )
-        
-        turn_color = "🔷" if is_blue_turn else "🔶"
-        team_name = blue_team_name if is_blue_turn else red_team_name
-        st.markdown(f"{turn_color} **{team_name}'s {phase}**")
-        
-        for idx, (hero, score) in enumerate(suggestions[:5]):
-            hero_role = ""
-            if phase == 'PICK' and hero in HERO_PROFILES:
-                primary_role = HERO_PROFILES[hero][0].get('primary_role', '')
-                hero_role = f" ({primary_role})"
-            
-            label = f"{hero}{hero_role} - {'Threat' if phase == 'BAN' else 'Win Rate'}: {score:.1%}"
-            
-            st.button(
-                label, 
-                key=f"sug_{hero}", 
-                use_container_width=True,
-                on_click=handle_suggestion_click,
-                args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES)
+st.markdown("---")
+
+# --- MODIFICATION START ---
+# AI Suggestions at the bottom, behind a toggle
+st.toggle("Show AI Suggestions", key='show_ai_suggestions', value=False)
+
+if st.session_state.get('show_ai_suggestions', False):
+    with suggestion_placeholder.container():
+        if turn:
+            st.subheader("AI Suggestions")
+            is_blue_turn = (turn == 'B')
+            suggestions = get_ai_suggestions(
+                [h for h in ALL_HEROES if h not in taken_heroes],
+                blue_p, red_p, blue_b, red_b,
+                draft['blue_team'], draft['red_team'],
+                model_assets, HERO_PROFILES, is_blue_turn, phase
             )
-    else:
-        st.subheader("📋 Draft Complete")
-        st.info("All picks and bans have been completed. Review the AI analysis above to understand the strengths and weaknesses of each draft.")
+            
+            turn_color = "🔷" if is_blue_turn else "🔶"
+            team_name = blue_team_name if is_blue_turn else red_team_name
+            st.markdown(f"{turn_color} **{team_name}'s {phase}**")
+            
+            for idx, (hero, score) in enumerate(suggestions[:5]):
+                hero_role = ""
+                if phase == 'PICK' and hero in HERO_PROFILES:
+                    primary_role = HERO_PROFILES[hero][0].get('primary_role', '')
+                    hero_role = f" ({primary_role})"
+                
+                label = f"{hero}{hero_role} - {'Threat' if phase == 'BAN' else 'Win Rate'}: {score:.1%}"
+                
+                st.button(
+                    label, 
+                    key=f"sug_{hero}", 
+                    use_container_width=True,
+                    on_click=handle_suggestion_click,
+                    args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES)
+                )
+        else:
+            st.info("Draft is complete, no suggestions to show.")
+# --- MODIFICATION END ---
 
 if st.checkbox("Show team statistics", value=False):
     team_match_count = {}
@@ -585,3 +575,16 @@ if st.checkbox("Show team statistics", value=False):
         stats_df = pd.DataFrame(stats_data)
         stats_df = stats_df.sort_values("Matches Played", ascending=False)
         st.dataframe(stats_df, hide_index=True)
+
+# Add a reset draft button at the very end
+if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
+    st.session_state.draft = {
+        'blue_team': None, 
+        'red_team': None,
+        'blue_bans': [None]*5, 
+        'red_bans': [None]*5,
+        'blue_picks': {role: None for role in ROLES},
+        'red_picks': {role: None for role in ROLES}
+    }
+    st.session_state.selected_past_game = None
+    st.rerun()
