@@ -298,11 +298,9 @@ with st.expander("Review a Past Game"):
         st.session_state.blue_team_select = blue_team_name
         st.session_state.red_team_select = red_team_name
         
-        # --- MODIFICATION START ---
         # Determine winner name based on the now-correct team assignments
         winner_name = blue_team_name if str(game_data.get('winner')) == '1' else red_team_name
         st.success(f"✅ **Game Loaded!** Actual Winner: **{winner_name}**")
-        # --- MODIFICATION END ---
         
         st.rerun()
 
@@ -312,14 +310,11 @@ st.markdown("---")
 draft = st.session_state.draft
 prob_placeholder = st.empty()
 turn_placeholder = st.empty()
-analysis_placeholder = st.empty()
 suggestion_placeholder = st.empty()
 
-# --- MODIFICATION START ---
 # Get team names with fallbacks for display
 blue_team_name = draft.get('blue_team') or "Blue Team"
 red_team_name = draft.get('red_team') or "Red Team"
-# --- MODIFICATION END ---
 
 c1, c2, c3 = st.columns([2, 2, 1])
 
@@ -367,9 +362,7 @@ blue_col, red_col = st.columns(2)
 
 # Blue team section with callbacks
 with blue_col:
-    # --- MODIFICATION START ---
     st.header(f"🔷 {blue_team_name}")
-    # --- MODIFICATION END ---
     st.subheader("Bans")
     ban_cols = st.columns(5)
     for i in range(5):
@@ -403,9 +396,7 @@ with blue_col:
 
 # Red team section with callbacks
 with red_col:
-    # --- MODIFICATION START ---
     st.header(f"🔶 {red_team_name}")
-    # --- MODIFICATION END ---
     st.subheader("Bans")
     ban_cols = st.columns(5)
     for i in range(5):
@@ -437,6 +428,23 @@ with red_col:
             index=available.index(current_pick) if current_pick in available else 0,
         )
 
+# --- MODIFICATION START ---
+# Moved AI analysis section here and wrapped it in a toggle
+st.toggle("Show AI Draft Analysis", key='show_ai_analysis', value=False)
+analysis_placeholder = st.empty()
+
+if st.session_state.get('show_ai_analysis', False):
+    with analysis_placeholder.container():
+        st.subheader("AI Draft Analysis")
+        c1, c2 = st.columns(2)
+        explanation = generate_prediction_explanation(list(draft['blue_picks'].values()), list(draft['red_picks'].values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
+        with c1:
+            st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
+        with c2:
+            st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
+# --- MODIFICATION END ---
+
+
 # Add a reset draft button
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
     # Only reset the application's central state dictionary.
@@ -458,7 +466,6 @@ blue_b = [v for v in draft['blue_bans'] if v]
 red_b = [v for v in draft['red_bans'] if v]
 
 prob_overall, prob_draft_only = predict_draft_outcome(blue_p, red_p, blue_b, red_b, draft['blue_team'], draft['red_team'], model_assets, HERO_PROFILES)
-explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
 
 with prob_placeholder.container():
     st.subheader("Live Win Probability")
@@ -504,14 +511,6 @@ with prob_placeholder.container():
             st.markdown("---")
             st.markdown(f"**Series Win Probability:** {blue_team_name} **{blue_series_win_prob:.1%}** vs {red_team_name} **{red_series_win_prob:.1%}**")
 
-with analysis_placeholder.container():
-    st.subheader("AI Draft Analysis")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
-    with c2:
-        st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
-
 # --- Turn Logic & Suggestions ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
 turn, phase = None, "DRAFT COMPLETE"
@@ -521,10 +520,8 @@ elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
 if turn:
-    # --- MODIFICATION START ---
     team_turn = blue_team_name if turn == 'B' else red_team_name
     turn_placeholder.header(f"Turn: {team_turn} ({phase})")
-    # --- MODIFICATION END ---
 
 with suggestion_placeholder.container():
     if turn:
@@ -538,10 +535,8 @@ with suggestion_placeholder.container():
         )
         
         turn_color = "🔷" if is_blue_turn else "🔶"
-        # --- MODIFICATION START ---
         team_name = blue_team_name if is_blue_turn else red_team_name
         st.markdown(f"{turn_color} **{team_name}'s {phase}**")
-        # --- MODIFICATION END ---
         
         for idx, (hero, score) in enumerate(suggestions[:5]):
             hero_role = ""
