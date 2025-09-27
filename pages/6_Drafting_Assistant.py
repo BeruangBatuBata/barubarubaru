@@ -33,9 +33,11 @@ def update_draft(team, key, section):
     """Callback function to update the draft in session state."""
     hero = st.session_state[key]
     if section == 'picks':
-        st.session_state.draft[team][section][key.split('_')[-1]] = hero
+        role = key.split('_')[-1]
+        st.session_state.draft[team][role] = hero
     else: # bans
-        st.session_state.draft[team][section][int(key.split('_')[-1])] = hero
+        index = int(key.split('_')[-1])
+        st.session_state.draft[team][index] = hero
 
 # --- Load Model & Data ---
 model_assets = load_prediction_assets()
@@ -122,13 +124,8 @@ with st.expander("Review a Past Game"):
             for i in range(5):
                 st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
-                
-                for team_num in [1, 2]:
-                    hero = extradata.get(f'team{team_num}champion{i+1}')
-                    team_key = 'blue_picks' if team_num == 1 else 'red_picks'
-                    if hero and hero not in ALL_HEROES:
-                        st.warning(f"'{hero}' is not a recognized hero in your draft_assets.json file. Please update it.")
-                    st.session_state.draft[team_key][ROLES[i]] = hero
+                st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
+                st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
 
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
@@ -181,7 +178,7 @@ with red_col:
         st.selectbox(role, available, key=key, index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0,
                      on_change=update_draft, args=('red_picks', key, 'picks'))
 
-# --- Calculations ---
+# --- Calculations & Predictions ---
 blue_p = {k: v for k, v in draft['blue_picks'].items() if v}
 red_p = {k: v for k, v in draft['red_picks'].items() if v}
 blue_b = [v for v in draft['blue_bans'] if v]
