@@ -465,7 +465,7 @@ def plot_presence_bar_chart(df, title):
         y=df_sorted['Hero'],
         x=df_sorted['Pick Rate (%)'],
         name='Pick Rate',
-        orientation='h',
+        orientation='v',
         marker=dict(color='#3b82f6', line=dict(color='rgba(0,0,0,0.1)', width=1))
     ))
 
