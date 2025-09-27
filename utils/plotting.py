@@ -92,14 +92,11 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
 
     # --- MODIFICATION START: Corrected sorting logic ---
     if chart_type == 'top':
-        sort_column = 'Win Rate (%)'
-        df = df.sort_values(by=sort_column, ascending=True)
+        df = df.sort_values(by='Win Rate (%)', ascending=True)
     elif chart_type == 'trending_up':
-        sort_column = 'Change (%)'
-        df = df.sort_values(by=sort_column, ascending=True)
+        df = df.sort_values(by='Change (%)', ascending=True)
     elif chart_type == 'trending_down':
-        sort_column = 'Change (%)'
-        df = df.sort_values(by=sort_column, ascending=False)
+        df = df.sort_values(by='Change (%)', ascending=False)
     # --- MODIFICATION END ---
 
     # Prepare data based on chart type
