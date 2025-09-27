@@ -310,8 +310,7 @@ st.markdown("---")
 draft = st.session_state.draft
 prob_placeholder = st.empty()
 analysis_placeholder = st.empty()
-turn_placeholder = st.empty()
-suggestion_placeholder = st.empty()
+
 
 # Get team names with fallbacks for display
 blue_team_name = draft.get('blue_team') or "Blue Team"
@@ -491,7 +490,7 @@ with red_col:
             index=available.index(current_pick) if current_pick in available else 0,
         )
 
-# --- Turn Logic ---
+# --- Turn Logic & Suggestions ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
 turn, phase = None, "DRAFT COMPLETE"
 if total_bans < 6: phase, turn = "BAN", ['B', 'R', 'B', 'R', 'B', 'R'][total_bans]
@@ -499,22 +498,20 @@ elif total_picks < 6: phase, turn = "PICK", ['B', 'R', 'R', 'B', 'B', 'R'][total
 elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
-if turn:
-    team_turn = blue_team_name if turn == 'B' else red_team_name
-    turn_placeholder.header(f"Turn: {team_turn} ({phase})")
-else:
-    turn_placeholder.header("📋 Draft Complete")
-    st.info("All picks and bans have been completed. Review the analysis above to understand the strengths and weaknesses of each draft.")
-
 st.markdown("---")
 
 # --- MODIFICATION START ---
-# AI Suggestions at the bottom, behind a toggle
+# AI Suggestions and Turn display at the bottom, behind a toggle
 st.toggle("Show AI Suggestions", key='show_ai_suggestions', value=False)
+turn_placeholder = st.empty()
+suggestion_placeholder = st.empty()
 
 if st.session_state.get('show_ai_suggestions', False):
-    with suggestion_placeholder.container():
-        if turn:
+    if turn:
+        team_turn = blue_team_name if turn == 'B' else red_team_name
+        turn_placeholder.header(f"Turn: {team_turn} ({phase})")
+        
+        with suggestion_placeholder.container():
             st.subheader("AI Suggestions")
             is_blue_turn = (turn == 'B')
             suggestions = get_ai_suggestions(
@@ -543,38 +540,12 @@ if st.session_state.get('show_ai_suggestions', False):
                     on_click=handle_suggestion_click,
                     args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES)
                 )
-        else:
-            st.info("Draft is complete, no suggestions to show.")
+    else:
+        turn_placeholder.header("📋 Draft Complete")
+        st.info("Draft is complete, no suggestions to show.")
+
 # --- MODIFICATION END ---
 
-if st.checkbox("Show team statistics", value=False):
-    team_match_count = {}
-    for match in pooled_matches:
-        opps = match.get('match2opponents', [])
-        if len(opps) >= 2:
-            for game in match.get('match2games', []):
-                if game.get('extradata') and game.get('winner') in ['1', '2']:
-                    team1 = opps[0].get('name', '').strip()
-                    team2 = opps[1].get('name', '').strip()
-                    if team1:
-                        team_match_count[team1] = team_match_count.get(team1, 0) + 1
-                    if team2:
-                        team_match_count[team2] = team_match_count.get(team2, 0) + 1
-                    break
-    
-    st.info(f"📊 **{len(TOURNAMENT_TEAMS)-1}** teams have played matches in this tournament")
-    
-    with st.expander("View team statistics"):
-        stats_data = []
-        for team in TOURNAMENT_TEAMS[1:]:
-            stats_data.append({
-                "Team": team,
-                "Matches Played": team_match_count.get(team, 0) // 2
-            })
-        
-        stats_df = pd.DataFrame(stats_data)
-        stats_df = stats_df.sort_values("Matches Played", ascending=False)
-        st.dataframe(stats_df, hide_index=True)
 
 # Add a reset draft button at the very end
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
