@@ -64,20 +64,19 @@ with st.expander("Review a Past Game"):
     selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
     selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
+    # --- REWRITTEN & SIMPLIFIED FILTERING LOGIC ---
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
+            if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
+                continue
+            
             game_opps = game.get('opponents', [])
             if len(game_opps) < 2:
                 continue
-
-            # --- CORRECTED LOGIC ---
-            # Ensure the 'name' key exists before trying to access it
-            if 'name' not in game_opps[0] or 'name' not in game_opps[1]:
-                continue
             
-            blue_team_name = game_opps[0]['name']
-            red_team_name = game_opps[1]['name']
+            blue_team_name = game_opps[0].get('name')
+            red_team_name = game_opps[1].get('name')
             game_teams = {blue_team_name, red_team_name}
 
             # Apply filters
