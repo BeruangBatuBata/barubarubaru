@@ -427,13 +427,13 @@ with prob_placeholder.container():
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
     
     if series_format > 1 and prob_overall is not None:
-        # Get team names with fallbacks
-        blue_team_name = draft['blue_team'] or "Blue Team"
-        red_team_name = draft['red_team'] or "Red Team"
-        series_probs = calculate_series_score_probs(prob_overall, series_format, blue_team_name, red_team_name)
+        series_probs = calculate_series_score_probs(prob_overall, series_format)
         if series_probs:
             st.write(f"**Best-of-{series_format} Series Score Probability**")
             
+            # Get team names with fallbacks
+            blue_team_name = draft['blue_team'] or "Blue Team"
+            red_team_name = draft['red_team'] or "Red Team"
             
             # Create columns for better layout
             col1, col2 = st.columns(2)
