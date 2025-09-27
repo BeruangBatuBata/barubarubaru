@@ -88,7 +88,7 @@ else:
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         
         df_presence = df_stats.sort_values(by="Presence (%)", ascending=False).head(10)
-        st.help(df_presence)
+        st.dataframe(df_presence)
         
         # By setting 'x' and 'y' explicitly, st.bar_chart will respect the DataFrame's sort order
         st.bar_chart(df_presence, x='Hero', y=['Pick Rate (%)', 'Ban Rate (%)'])
