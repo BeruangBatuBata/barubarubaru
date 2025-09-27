@@ -10,7 +10,8 @@ from datetime import datetime
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
 build_sidebar()
 
-# --- Helper function for the custom probability bar ---
+# --- Helper Functions ---
+
 def generate_win_prob_bar(probability, title):
     """Generates a custom HTML two-sided probability bar."""
     if probability is None:
@@ -27,6 +28,14 @@ def generate_win_prob_bar(probability, title):
     </div>
     """
     st.markdown(bar_html, unsafe_allow_html=True)
+
+def update_draft(team, key, section):
+    """Callback function to update the draft in session state."""
+    hero = st.session_state[key]
+    if section == 'picks':
+        st.session_state.draft[team][section][key.split('_')[-1]] = hero
+    else: # bans
+        st.session_state.draft[team][section][int(key.split('_')[-1])] = hero
 
 # --- Load Model & Data ---
 model_assets = load_prediction_assets()
@@ -56,64 +65,46 @@ if 'draft' not in st.session_state:
 st.title("🎯 Professional Drafting Assistant")
 
 with st.expander("Review a Past Game"):
-    # Get a list of teams that have actually competed
     competing_teams = set()
     for match in pooled_matches:
         opps = match.get('match2opponents', [])
         if len(opps) >= 2:
-            if opps[0].get('name'):
-                competing_teams.add(opps[0].get('name'))
-            if opps[1].get('name'):
-                competing_teams.add(opps[1].get('name'))
+            if opps[0].get('name'): competing_teams.add(opps[0].get('name'))
+            if opps[1].get('name'): competing_teams.add(opps[1].get('name'))
     
     all_teams_for_filter = sorted(list(competing_teams))
 
-    # Filters
     col1, col2, col3 = st.columns(3)
-    with col1:
-        selected_team1 = st.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
-    with col2:
-        selected_team2 = st.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
-    with col3:
-        selected_date = st.date_input("Filter by Date:", None, key="filter_date")
+    selected_team1 = col1.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
+    selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
+    selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         opps = match.get('match2opponents', [])
         if len(opps) < 2: continue
 
-        team1_name = opps[0].get('name')
-        team2_name = opps[1].get('name')
+        team1_name, team2_name = opps[0].get('name'), opps[1].get('name')
         
-        # Date filtering
         match_date_str = match.get('date')
         match_date = None
         if match_date_str:
             try:
-                # Assuming date is in ISO format, adjust if necessary
                 match_date = datetime.fromisoformat(match_date_str.replace('Z', '+00:00')).date()
-            except (ValueError, TypeError):
-                # Handle cases where the date format might be different or invalid
-                pass
+            except (ValueError, TypeError): pass
 
-
-        # Apply filters
-        if selected_team1 and selected_team1 not in [team1_name, team2_name]:
-            continue
-        if selected_team2 and selected_team2 not in [team1_name, team2_name]:
-            continue
-        if selected_date and selected_date != match_date:
+        if (selected_team1 and selected_team1 not in [team1_name, team2_name]) or \
+           (selected_team2 and selected_team2 not in [team1_name, team2_name]) or \
+           (selected_date and selected_date != match_date):
             continue
         if selected_team1 and selected_team2 and selected_team1 == selected_team2:
             st.warning("Please select two different teams.")
             continue
             
         for game_idx, game in enumerate(match.get('match2games', [])):
-            # Only show games that have a winner (i.e., have been completed)
             if game.get('extradata') and str(game.get('winner')) in ['1', '2']:
                 label = f"{team1_name} vs {team2_name} (Game {game_idx + 1})"
-                if match_date:
-                    label += f" - {match_date.strftime('%Y-%m-%d')}"
+                if match_date: label += f" - {match_date.strftime('%Y-%m-%d')}"
                 playable_games.append((label, match_idx, game_idx))
     
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
@@ -132,15 +123,12 @@ with st.expander("Review a Past Game"):
                 st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
                 
-                hero_blue = extradata.get(f'team1champion{i+1}')
-                if hero_blue and hero_blue not in ALL_HEROES:
-                    st.warning(f"'{hero_blue}' is not a recognized hero in your draft_assets.json file. Please update it.")
-                st.session_state.draft['blue_picks'][ROLES[i]] = hero_blue
-
-                hero_red = extradata.get(f'team2champion{i+1}')
-                if hero_red and hero_red not in ALL_HEROES:
-                    st.warning(f"'{hero_red}' is not a recognized hero in your draft_assets.json file. Please update it.")
-                st.session_state.draft['red_picks'][ROLES[i]] = hero_red
+                for team_num in [1, 2]:
+                    hero = extradata.get(f'team{team_num}champion{i+1}')
+                    team_key = 'blue_picks' if team_num == 1 else 'red_picks'
+                    if hero and hero not in ALL_HEROES:
+                        st.warning(f"'{hero}' is not a recognized hero in your draft_assets.json file. Please update it.")
+                    st.session_state.draft[team_key][ROLES[i]] = hero
 
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
@@ -150,10 +138,7 @@ st.markdown("---")
 
 # --- Main Draft Interface ---
 draft = st.session_state.draft
-prob_placeholder = st.empty()
-turn_placeholder = st.empty()
-analysis_placeholder = st.empty()
-suggestion_placeholder = st.empty()
+prob_placeholder, turn_placeholder, analysis_placeholder, suggestion_placeholder = st.empty(), st.empty(), st.empty(), st.empty()
 
 c1, c2, c3 = st.columns([2, 2, 1])
 draft['blue_team'] = c1.selectbox("Blue Team:", ALL_TEAMS, key='blue_team_select', index=ALL_TEAMS.index(draft['blue_team']) if draft['blue_team'] in ALL_TEAMS else 0)
@@ -161,7 +146,8 @@ draft['red_team'] = c2.selectbox("Red Team:", ALL_TEAMS, key='red_team_select', 
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
 
 blue_col, red_col = st.columns(2)
-taken_heroes = {v for k, v in draft['blue_picks'].items() if v} | {v for k, v in draft['red_picks'].items() if v} | {v for v in draft['blue_bans'] if v} | {v for v in draft['red_bans'] if v}
+taken_heroes = {v for k, v in draft['blue_picks'].items() if v} | {v for k, v in draft['red_picks'].items() if v} | set(draft['blue_bans']) | set(draft['red_bans'])
+taken_heroes.discard(None)
 
 with blue_col:
     st.header("🔷 Blue Team")
@@ -169,11 +155,15 @@ with blue_col:
     ban_cols = st.columns(5)
     for i in range(5):
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['blue_bans'][i]])
-        draft['blue_bans'][i] = ban_cols[i].selectbox(f"B{i+1}", available, key=f"b_ban_{i}", index=available.index(draft['blue_bans'][i]) if draft['blue_bans'][i] in available else 0)
+        key = f"b_ban_{i}"
+        ban_cols[i].selectbox(f"B{i+1}", available, key=key, index=available.index(draft['blue_bans'][i]) if draft['blue_bans'][i] in available else 0,
+                              on_change=update_draft, args=('blue_bans', key, 'bans'))
     st.subheader("Picks")
     for role in ROLES:
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['blue_picks'][role]])
-        draft['blue_picks'][role] = st.selectbox(role, available, key=f"b_pick_{role}", index=available.index(draft['blue_picks'][role]) if draft['blue_picks'][role] in available else 0)
+        key = f"b_pick_{role}"
+        st.selectbox(role, available, key=key, index=available.index(draft['blue_picks'][role]) if draft['blue_picks'][role] in available else 0,
+                     on_change=update_draft, args=('blue_picks', key, 'picks'))
 
 with red_col:
     st.header("🔶 Red Team")
@@ -181,11 +171,15 @@ with red_col:
     ban_cols = st.columns(5)
     for i in range(5):
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['red_bans'][i]])
-        draft['red_bans'][i] = ban_cols[i].selectbox(f"R{i+1}", available, key=f"r_ban_{i}", index=available.index(draft['red_bans'][i]) if draft['red_bans'][i] in available else 0)
+        key = f"r_ban_{i}"
+        ban_cols[i].selectbox(f"R{i+1}", available, key=key, index=available.index(draft['red_bans'][i]) if draft['red_bans'][i] in available else 0,
+                              on_change=update_draft, args=('red_bans', key, 'bans'))
     st.subheader("Picks")
     for role in ROLES:
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['red_picks'][role]])
-        draft['red_picks'][role] = st.selectbox(role, available, key=f"r_pick_{role}", index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0)
+        key = f"r_pick_{role}"
+        st.selectbox(role, available, key=key, index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0,
+                     on_change=update_draft, args=('red_picks', key, 'picks'))
 
 # --- Calculations ---
 blue_p = {k: v for k, v in draft['blue_picks'].items() if v}
@@ -201,16 +195,10 @@ with prob_placeholder.container():
     generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
     
-    series_probs = calculate_series_score_probs(
-        prob_overall, 
-        series_format,
-        draft['blue_team'],
-        draft['red_team']
-    )
+    series_probs = calculate_series_score_probs(prob_overall, series_format, draft['blue_team'], draft['red_team'])
     
     if series_probs:
         st.write(f"**Best-of-{series_format} Series Score Probability**")
-        # Sort probabilities from most likely to least likely
         sorted_probs = sorted(series_probs.items(), key=lambda item: item[1], reverse=True)
         prob_text = ""
         for score, probability in sorted_probs:
@@ -220,10 +208,8 @@ with prob_placeholder.container():
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
     c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
-    with c2:
-        st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
+    with c1: st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
+    with c2: st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
 
 # --- Turn Logic & Suggestions ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
@@ -233,30 +219,18 @@ elif total_picks < 6: phase, turn = "PICK", ['B', 'R', 'R', 'B', 'B', 'R'][total
 elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
-if turn == 'B':
-    team_turn = draft.get('blue_team') or "Blue Team"
-elif turn == 'R':
-    team_turn = draft.get('red_team') or "Red Team"
-else:
-    team_turn = "Draft Complete"
+if turn == 'B': team_turn = draft.get('blue_team') or "Blue Team"
+elif turn == 'R': team_turn = draft.get('red_team') or "Red Team"
+else: team_turn = "Draft Complete"
 
-# Use a different variable for phase to avoid conflict
 turn_phase_text = phase if phase != "DRAFT COMPLETE" else ""
-if team_turn != "Draft Complete":
-    turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})")
-else:
-    turn_placeholder.header(f"{team_turn}")
+turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if team_turn != "Draft Complete" else f"{team_turn}")
 
 with suggestion_placeholder.container():
     if turn:
         st.subheader("AI Suggestions")
         is_blue_turn = (turn == 'B')
-        suggestions = get_ai_suggestions(
-            [h for h in ALL_HEROES if h not in taken_heroes],
-            blue_p, red_p, blue_b, red_b,
-            draft['blue_team'], draft['red_team'],
-            model_assets, HERO_PROFILES, is_blue_turn, phase
-        )
+        suggestions = get_ai_suggestions([h for h in ALL_HEROES if h not in taken_heroes], blue_p, red_p, blue_b, red_b, draft['blue_team'], draft['red_team'], model_assets, HERO_PROFILES, is_blue_turn, phase)
         for hero, score in suggestions[:5]:
             label = f"{hero} ({'Threat' if phase == 'BAN' else 'Win Prob'}: {score:.1%})"
             st.button(label, key=f"sug_{hero}")
