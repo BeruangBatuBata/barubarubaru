@@ -110,7 +110,7 @@ with st.expander("Review a Past Game"):
             
         for game_idx, game in enumerate(match.get('match2games', [])):
             # Only show games that have a winner (i.e., have been completed)
-            if game.get('extradata') and game.get('winner') is not None:
+            if game.get('extradata') and str(game.get('winner')) in ['1', '2']:
                 label = f"{team1_name} vs {team2_name} (Game {game_idx + 1})"
                 if match_date:
                     label += f" - {match_date.strftime('%Y-%m-%d')}"
@@ -122,7 +122,7 @@ with st.expander("Review a Past Game"):
         if selected_game:
             _, match_idx, game_idx = selected_game
             match_data = pooled_matches[match_idx]
-            game_data = match_data['match2games'][game_idx]
+            game__data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
