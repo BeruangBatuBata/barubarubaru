@@ -12,7 +12,9 @@ def train_and_save_prediction_model(matches, hero_profiles, hero_damage_type, mo
     Trains an XGBoost model and saves it to a native JSON format.
     Saves all other assets to a separate JSON file.
     """
-    all_heroes = sorted(list(set(p['champion'] for m in matches for g in m.get('match2games', []) for o in g.get('opponents', []) for p in o.get('players', []) if 'champion' in p)))
+    # Use the master list of heroes from HERO_PROFILES as the single source of truth
+    all_heroes = sorted(list(hero_profiles.keys()))
+    
     all_teams = sorted(list(set(o['name'] for m in matches for o in m.get('match2opponents', []) if 'name' in o)))
     roles = ["EXP", "Jungle", "Mid", "Gold", "Roam"]
     all_tags = sorted(list(set(tag for profiles in hero_profiles.values() for profile in profiles for tag in profile['tags'])))
