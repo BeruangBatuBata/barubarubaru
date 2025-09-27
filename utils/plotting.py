@@ -437,3 +437,72 @@ def create_counter_bars(df, title, color_scheme='green'):
         )
     
     return fig
+
+def plot_presence_bar_chart(df, title):
+    """
+    Creates a sorted, interactive, and zoom-locked stacked bar chart for hero presence.
+    """
+    if df.empty:
+        st.warning("No data to plot for presence chart.")
+        return None, None
+        
+    # Sort the dataframe by 'Presence (%)' to ensure the chart is ordered
+    df_sorted = df.sort_values('Presence (%)', ascending=True)
+
+    fig = go.Figure()
+
+    # Add Ban Rate bar
+    fig.add_trace(go.Bar(
+        y=df_sorted['Hero'],
+        x=df_sorted['Ban Rate (%)'],
+        name='Ban Rate',
+        orientation='h',
+        marker=dict(color='#e53935', line=dict(color='rgba(0,0,0,0.1)', width=1))
+    ))
+    
+    # Add Pick Rate bar (stacked on top of Ban Rate)
+    fig.add_trace(go.Bar(
+        y=df_sorted['Hero'],
+        x=df_sorted['Pick Rate (%)'],
+        name='Pick Rate',
+        orientation='h',
+        marker=dict(color='#3b82f6', line=dict(color='rgba(0,0,0,0.1)', width=1))
+    ))
+
+    fig.update_layout(
+        barmode='stack',
+        title=dict(text=f"<b>{title}</b>", font=dict(size=16), x=0.5),
+        xaxis_title="Presence (%)",
+        yaxis_title=None,
+        height=400,
+        margin=dict(l=100, r=20, t=60, b=40),
+        plot_bgcolor='#fafafa',
+        paper_bgcolor='white',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    # Add annotations for the total presence percentage
+    annotations = []
+    for y, total_presence in zip(df_sorted['Hero'], df_sorted['Presence (%)']):
+        annotations.append(dict(x=total_presence + 2, y=y, text=f"<b>{total_presence:.1f}%</b>",
+                                font=dict(family='Arial', size=11, color='#1a1a1a'),
+                                showarrow=False))
+    fig.update_layout(annotations=annotations)
+
+
+    # Configuration to disable scroll zoom
+    config = {
+        'scrollZoom': False,
+        'displayModeBar': True,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'zoomIn2d', 'zoomOut2d'],
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'hero_presence_chart',
+            'height': 500,
+            'width': 800,
+            'scale': 2
+        }
+    }
+    
+    return fig, config
