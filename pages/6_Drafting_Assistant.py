@@ -241,7 +241,6 @@ with st.expander("Review a Past Game"):
     if filtered_games:
         st.write(f"Found {len(filtered_games)} played game{'s' if len(filtered_games) > 1 else ''}")
         
-        # Find the index of the currently loaded game to set the selectbox default
         game_options = [None] + filtered_games
         current_selection_index = 0
         if st.session_state.selected_past_game in game_options:
@@ -265,7 +264,6 @@ with st.expander("Review a Past Game"):
         load_button = st.button("Load & Analyze Game", type="primary", disabled=(selected_game is None))
     
     if load_button and selected_game:
-        # Store the selected game in the session state
         st.session_state.selected_past_game = selected_game
         
         _, match_idx, game_idx = selected_game
@@ -273,9 +271,16 @@ with st.expander("Review a Past Game"):
         game_data = match_data['match2games'][game_idx]
         extradata = game_data['extradata']
         
-        # Load the draft data
-        st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
-        st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
+        # --- MODIFICATION START ---
+        # Update both the main state and the widget's key state
+        blue_team_name = match_data['match2opponents'][0].get('name', '').strip()
+        red_team_name = match_data['match2opponents'][1].get('name', '').strip()
+
+        st.session_state.draft['blue_team'] = blue_team_name
+        st.session_state.draft['red_team'] = red_team_name
+        st.session_state.blue_team_select = blue_team_name
+        st.session_state.red_team_select = red_team_name
+        # --- MODIFICATION END ---
         
         for i in range(5):
             st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
@@ -283,20 +288,8 @@ with st.expander("Review a Past Game"):
             st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
             st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
         
-        # Display the actual winner
         winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
         st.success(f"✅ **Game Loaded!** Actual Winner: **{winner}**")
-        
-        # Show a brief summary
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**{st.session_state.draft['blue_team']}** (Blue Side)")
-            blue_picks = [h for h in st.session_state.draft['blue_picks'].values() if h]
-            st.write("Picks: " + ", ".join(blue_picks[:3]) + "...")
-        with col2:
-            st.write(f"**{st.session_state.draft['red_team']}** (Red Side)")  
-            red_picks = [h for h in st.session_state.draft['red_picks'].values() if h]
-            st.write("Picks: " + ", ".join(red_picks[:3]) + "...")
         
         st.rerun()
 
@@ -311,7 +304,6 @@ suggestion_placeholder = st.empty()
 
 c1, c2, c3 = st.columns([2, 2, 1])
 
-# --- MODIFICATION START ---
 # Team selection with callbacks to ensure UI and state are synced
 def update_blue_team():
     st.session_state.draft['blue_team'] = st.session_state.blue_team_select
@@ -334,7 +326,6 @@ c2.selectbox(
     index=TOURNAMENT_TEAMS.index(draft['red_team']) if draft['red_team'] in TOURNAMENT_TEAMS else 0,
     on_change=update_red_team
 )
-# --- MODIFICATION END ---
 
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
 
@@ -425,15 +416,19 @@ with red_col:
 
 # Add a reset draft button
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
+    # --- MODIFICATION START ---
+    # When resetting, clear the widget keys too
+    st.session_state.blue_team_select = None
+    st.session_state.red_team_select = None
     st.session_state.draft = {
-        'blue_team': draft['blue_team'], 
-        'red_team': draft['red_team'],
+        'blue_team': None, 
+        'red_team': None,
         'blue_bans': [None]*5, 
         'red_bans': [None]*5,
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
-    # Also reset the selected past game
+    # --- MODIFICATION END ---
     st.session_state.selected_past_game = None
     st.rerun()
     
@@ -456,25 +451,21 @@ with prob_placeholder.container():
         if series_probs:
             st.write(f"**Best-of-{series_format} Series Score Probability**")
             
-            # Get team names with fallbacks
             blue_team_name = draft['blue_team'] or "Blue Team"
             red_team_name = draft['red_team'] or "Red Team"
             
-            # Create columns for better layout
             col1, col2 = st.columns(2)
             
-            # Separate scores by winner
             blue_wins = []
             red_wins = []
             
             for score, probability in series_probs.items():
                 wins, losses = map(int, score.split('-'))
-                if wins > losses:  # Blue team wins
+                if wins > losses:
                     blue_wins.append((score, probability))
-                else:  # Red team wins
+                else:
                     red_wins.append((score, probability))
             
-            # Display blue team winning scenarios
             with col1:
                 st.markdown(f"**🔷 {blue_team_name} wins:**")
                 if blue_wins:
@@ -483,7 +474,6 @@ with prob_placeholder.container():
                 else:
                     st.markdown("- *No winning scenarios*")
             
-            # Display red team winning scenarios  
             with col2:
                 st.markdown(f"**🔶 {red_team_name} wins:**")
                 if red_wins:
@@ -492,7 +482,6 @@ with prob_placeholder.container():
                 else:
                     st.markdown("- *No winning scenarios*")
             
-            # Show total win probability for series
             blue_series_win_prob = sum(prob for _, prob in blue_wins)
             red_series_win_prob = sum(prob for _, prob in red_wins)
             
@@ -530,15 +519,12 @@ with suggestion_placeholder.container():
             model_assets, HERO_PROFILES, is_blue_turn, phase
         )
         
-        # Show which team's turn
         turn_color = "🔷" if is_blue_turn else "🔶"
         team_name = draft['blue_team'] if is_blue_turn else draft['red_team']
         team_name = team_name or ("Blue Team" if is_blue_turn else "Red Team")
         st.markdown(f"{turn_color} **{team_name}'s {phase}**")
         
-        # Display suggestions with clickable functionality
         for idx, (hero, score) in enumerate(suggestions[:5]):
-            # Get hero role for picks
             hero_role = ""
             if phase == 'PICK' and hero in HERO_PROFILES:
                 primary_role = HERO_PROFILES[hero][0].get('primary_role', '')
@@ -546,27 +532,22 @@ with suggestion_placeholder.container():
             
             label = f"{hero}{hero_role} - {'Threat' if phase == 'BAN' else 'Win Rate'}: {score:.1%}"
             
-            # THIS IS THE KEY CHANGE: Use on_click instead of an 'if' block
             st.button(
                 label, 
                 key=f"sug_{hero}", 
                 use_container_width=True,
                 on_click=handle_suggestion_click,
-                args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES) # Pass arguments to the callback
+                args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES)
             )
     else:
-        # Draft is complete
         st.subheader("📋 Draft Complete")
         st.info("All picks and bans have been completed. Review the AI analysis above to understand the strengths and weaknesses of each draft.")
 
-# Optional: Show team statistics
 if st.checkbox("Show team statistics", value=False):
-    # Count matches per team
     team_match_count = {}
     for match in pooled_matches:
         opps = match.get('match2opponents', [])
         if len(opps) >= 2:
-            # Check if match was played
             for game in match.get('match2games', []):
                 if game.get('extradata') and game.get('winner') in ['1', '2']:
                     team1 = opps[0].get('name', '').strip()
@@ -575,16 +556,16 @@ if st.checkbox("Show team statistics", value=False):
                         team_match_count[team1] = team_match_count.get(team1, 0) + 1
                     if team2:
                         team_match_count[team2] = team_match_count.get(team2, 0) + 1
-                    break  # Count match only once
+                    break
     
     st.info(f"📊 **{len(TOURNAMENT_TEAMS)-1}** teams have played matches in this tournament")
     
     with st.expander("View team statistics"):
         stats_data = []
-        for team in TOURNAMENT_TEAMS[1:]:  # Exclude None
+        for team in TOURNAMENT_TEAMS[1:]:
             stats_data.append({
                 "Team": team,
-                "Matches Played": team_match_count.get(team, 0) // 2  # Divide by 2 since we count each match twice
+                "Matches Played": team_match_count.get(team, 0) // 2
             })
         
         stats_df = pd.DataFrame(stats_data)
