@@ -241,7 +241,6 @@ with st.expander("Review a Past Game"):
     if filtered_games:
         st.write(f"Found {len(filtered_games)} played game{'s' if len(filtered_games) > 1 else ''}")
         
-        # --- MODIFICATION START ---
         # Find the index of the currently loaded game to set the selectbox default
         game_options = [None] + filtered_games
         current_selection_index = 0
@@ -255,7 +254,6 @@ with st.expander("Review a Past Game"):
             format_func=lambda x: x[0] if x else "Select a game...", 
             key="filtered_game_selector"
         )
-        # --- MODIFICATION END ---
 
     else:
         st.info("No played games found matching the selected filters.")
@@ -267,10 +265,8 @@ with st.expander("Review a Past Game"):
         load_button = st.button("Load & Analyze Game", type="primary", disabled=(selected_game is None))
     
     if load_button and selected_game:
-        # --- MODIFICATION START ---
         # Store the selected game in the session state
         st.session_state.selected_past_game = selected_game
-        # --- MODIFICATION END ---
         
         _, match_idx, game_idx = selected_game
         match_data = pooled_matches[match_idx]
@@ -315,13 +311,20 @@ suggestion_placeholder = st.empty()
 
 c1, c2, c3 = st.columns([2, 2, 1])
 
-# Team selection with callbacks
+# --- MODIFICATION START ---
+# Team selection with callbacks to ensure UI and state are synced
+def update_blue_team():
+    st.session_state.draft['blue_team'] = st.session_state.blue_team_select
+
+def update_red_team():
+    st.session_state.draft['red_team'] = st.session_state.red_team_select
 
 c1.selectbox(
     "Blue Team:", 
     TOURNAMENT_TEAMS, 
     key='blue_team_select', 
     index=TOURNAMENT_TEAMS.index(draft['blue_team']) if draft['blue_team'] in TOURNAMENT_TEAMS else 0,
+    on_change=update_blue_team
 )
 
 c2.selectbox(
@@ -329,7 +332,9 @@ c2.selectbox(
     TOURNAMENT_TEAMS, 
     key='red_team_select', 
     index=TOURNAMENT_TEAMS.index(draft['red_team']) if draft['red_team'] in TOURNAMENT_TEAMS else 0,
+    on_change=update_red_team
 )
+# --- MODIFICATION END ---
 
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
 
@@ -428,10 +433,8 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
-    # --- MODIFICATION START ---
     # Also reset the selected past game
     st.session_state.selected_past_game = None
-    # --- MODIFICATION END ---
     st.rerun()
     
 # --- Calculations ---
