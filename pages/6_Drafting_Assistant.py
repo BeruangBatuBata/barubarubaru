@@ -12,6 +12,7 @@ build_sidebar()
 
 # --- Helper Functions ---
 def generate_win_prob_bar(probability, title):
+    """Generates a custom HTML two-sided probability bar."""
     if probability is None: probability = 0.5
     blue_pct, red_pct = probability * 100, 100 - (probability * 100)
     bar_html = f"""
@@ -26,6 +27,7 @@ def generate_win_prob_bar(probability, title):
     st.markdown(bar_html, unsafe_allow_html=True)
 
 def update_draft(key):
+    """Generic callback to ensure widget state is saved on change."""
     pass
 
 # --- Load Model & Data ---
@@ -66,32 +68,29 @@ with st.expander("Review a Past Game"):
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
-            include_game = True
-
-            # 1. Check for valid game data
+            # 1. Start with valid games
             if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
-                include_game = False
+                continue
             
             game_opps = game.get('opponents', [])
             if len(game_opps) < 2:
-                include_game = False
-
-            if not include_game:
                 continue
-
-            # 2. Get game-specific info
+            
             blue_team_name = game_opps[0].get('name')
             red_team_name = game_opps[1].get('name')
             game_teams = {blue_team_name, red_team_name}
 
-            # 3. Apply Team Filters
+            # 2. Apply filters sequentially
             if selected_team1 and selected_team1 not in game_teams:
-                include_game = False
+                continue
             
             if selected_team2 and selected_team2 not in game_teams:
-                include_game = False
-
-            # 4. Apply Date Filter
+                continue
+            
+            # This handles the case where both teams are selected
+            if selected_team1 and selected_team2 and len({selected_team1, selected_team2} - game_teams) > 0:
+                continue
+            
             match_date = None
             if match.get('date'):
                 try:
@@ -99,14 +98,13 @@ with st.expander("Review a Past Game"):
                 except (ValueError, TypeError): pass
             
             if selected_date and selected_date != match_date:
-                include_game = False
+                continue
 
-            # 5. If game passes all checks, add it
-            if include_game:
-                label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
-                if match_date:
-                    label += f" - {match_date.strftime('%Y-%m-%d')}"
-                playable_games.append((label, match_idx, game_idx))
+            # 3. If game passes all checks, add it
+            label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+            if match_date:
+                label += f" - {match_date.strftime('%Y-%m-%d')}"
+            playable_games.append((label, match_idx, game_idx))
 
     if selected_team1 and selected_team2 and selected_team1 == selected_team2:
         st.warning("Please select two different teams.")
