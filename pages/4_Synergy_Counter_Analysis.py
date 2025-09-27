@@ -155,11 +155,9 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
             if team_filter != "All Teams": 
                 title += f" for {team_filter}"
             
-            # --- MODIFICATION START ---
             fig, config = plot_synergy_bar_chart_interactive(df_results, title, chart_type='top')
             if fig:
                 st.plotly_chart(fig, use_container_width=True, key="synergy_chart", config=config)
-            # --- MODIFICATION END ---
 
         with tab2:
             st.info("📈 Showing hero duos with the biggest win rate improvements compared to last week")
@@ -177,12 +175,10 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
                 title = "Most Improved Hero Duos (vs Last Week)"
                 if team_filter != "All Teams":
                     title += f" for {team_filter}"
-                
-                # --- MODIFICATION START ---
+                    
                 fig, config = plot_synergy_bar_chart_interactive(df_trending_up, title, chart_type='trending_up')
                 if fig:
                     st.plotly_chart(fig, use_container_width=True, key="trending_up_chart", config=config)
-                # --- MODIFICATION END ---
 
         with tab3:
             st.info("📉 Showing hero duos with the biggest win rate declines compared to last week")
@@ -199,12 +195,10 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
                 title = "Most Declined Hero Duos (vs Last Week)"
                 if team_filter != "All Teams":
                     title += f" for {team_filter}"
-                
-                # --- MODIFICATION START ---
+                    
                 fig, config = plot_synergy_bar_chart_interactive(df_trending_down, title, chart_type='trending_down')
                 if fig:
                     st.plotly_chart(fig, use_container_width=True, key="trending_down_chart", config=config)
-                # --- MODIFICATION END ---
 
 elif analysis_mode == "Counters":
     # Hero selection for counter analysis
