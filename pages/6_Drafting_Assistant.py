@@ -271,7 +271,6 @@ with st.expander("Review a Past Game"):
         game_data = match_data['match2games'][game_idx]
         extradata = game_data['extradata']
         
-        # --- MODIFICATION START ---
         # Correctly assign teams AND drafts based on side data
         team1_name = match_data['match2opponents'][0].get('name', '').strip()
         team2_name = match_data['match2opponents'][1].get('name', '').strip()
@@ -298,7 +297,6 @@ with st.expander("Review a Past Game"):
         st.session_state.draft['red_team'] = red_team_name
         st.session_state.blue_team_select = blue_team_name
         st.session_state.red_team_select = red_team_name
-        # --- MODIFICATION END ---
         
         winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
         st.success(f"✅ **Game Loaded!** Actual Winner: **{winner}**")
@@ -428,9 +426,9 @@ with red_col:
 
 # Add a reset draft button
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
-    # When resetting, clear the widget keys too
-    st.session_state.blue_team_select = None
-    st.session_state.red_team_select = None
+    # --- MODIFICATION START ---
+    # Only reset the application's central state dictionary.
+    # The UI will update automatically on rerun.
     st.session_state.draft = {
         'blue_team': None, 
         'red_team': None,
@@ -439,6 +437,7 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
+    # --- MODIFICATION END ---
     st.session_state.selected_past_game = None
     st.rerun()
     
