@@ -64,31 +64,21 @@ with st.expander("Review a Past Game"):
     selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
     selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
-    # --- REWRITTEN & SIMPLIFIED FILTERING LOGIC ---
+    # --- REWRITTEN LOGIC: Removed 'extradata' and 'winner' check for debugging ---
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
-            # 1. Start with valid games
-            if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
-                continue
-            
             game_opps = game.get('opponents', [])
             if len(game_opps) < 2:
                 continue
-            
+
             blue_team_name = game_opps[0].get('name')
             red_team_name = game_opps[1].get('name')
             game_teams = {blue_team_name, red_team_name}
 
-            # 2. Apply filters sequentially
-            if selected_team1 and selected_team1 not in game_teams:
-                continue
-            
-            if selected_team2 and selected_team2 not in game_teams:
-                continue
-            
-            # This handles the case where both teams are selected
-            if selected_team1 and selected_team2 and len({selected_team1, selected_team2} - game_teams) > 0:
+            # Apply filters
+            if (selected_team1 and selected_team1 not in game_teams) or \
+               (selected_team2 and selected_team2 not in game_teams):
                 continue
             
             match_date = None
@@ -96,11 +86,10 @@ with st.expander("Review a Past Game"):
                 try:
                     match_date = datetime.fromisoformat(match['date'].replace('Z', '+00:00')).date()
                 except (ValueError, TypeError): pass
-            
+
             if selected_date and selected_date != match_date:
                 continue
 
-            # 3. If game passes all checks, add it
             label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
             if match_date:
                 label += f" - {match_date.strftime('%Y-%m-%d')}"
@@ -117,22 +106,28 @@ with st.expander("Review a Past Game"):
             _, match_idx, game_idx = selected_game
             match_data = pooled_matches[match_idx]
             game_data = match_data['match2games'][game_idx]
-            extradata = game_data['extradata']
+            extradata = game_data.get('extradata')
             
-            game_opps = game_data.get('opponents', [])
-            if len(game_opps) >= 2:
-                st.session_state.draft['blue_team'] = game_opps[0].get('name')
-                st.session_state.draft['red_team'] = game_opps[1].get('name')
-            
-                for i in range(5):
-                    st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
-                    st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
-                    st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
-                    st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
+            # Check if there is draft data to load
+            if not extradata:
+                st.error("No draft data (extradata) available for this game.")
+            else:
+                game_opps = game_data.get('opponents', [])
+                if len(game_opps) >= 2:
+                    st.session_state.draft['blue_team'] = game_opps[0].get('name')
+                    st.session_state.draft['red_team'] = game_opps[1].get('name')
+                
+                    for i in range(5):
+                        st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
+                        st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
+                        st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
+                        st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
 
-                winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
-                st.success(f"**Actual Winner:** {winner}")
-                st.rerun()
+                    winner_val = str(game_data.get('winner'))
+                    if winner_val in ['1', '2']:
+                        winner = "Blue Team" if winner_val == '1' else "Red Team"
+                        st.success(f"**Actual Winner:** {winner}")
+                    st.rerun()
 
 st.markdown("---")
 
