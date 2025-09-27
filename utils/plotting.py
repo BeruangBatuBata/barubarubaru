@@ -88,8 +88,19 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
     
     if df.empty:
         st.warning("No data to plot.")
-        return None
+        return None, None
+
+    # --- MODIFICATION START: Ensure data is sorted for plotting ---
+    # Because the y-axis is reversed, sorting ascending places the highest value at the top.
+    if chart_type == 'top':
+        sort_column = 'Win Rate (%)'
+    else: # trending charts
+        sort_column = 'Change (%)' if chart_type == 'trending_up' else 'Change (%)'
     
+    # For trending down, we want the biggest negative change at the top, so we sort ascending by change
+    df = df.sort_values(by=sort_column, ascending=(chart_type != 'trending_down'))
+    # --- MODIFICATION END ---
+
     # Prepare data based on chart type
     if chart_type == 'top':
         y_labels = [f"{h1} + {h2}" for h1, h2 in zip(df["Hero 1"], df["Hero 2"])]
@@ -298,24 +309,23 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
         layer="below"
     )
     
-    # Add custom modebar buttons
+    # --- MODIFICATION START: Disable scroll zoom ---
     config = {
+        'scrollZoom': False, # This disables zooming with the scroll wheel
         'displayModeBar': True,
         'displaylogo': False,
-        'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d', 'autoScale2d'],
+        'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'zoomIn2d', 'zoomOut2d'],
         'toImageButtonOptions': {
             'format': 'png',
             'filename': f'synergy_analysis_{chart_type}',
             'height': 500,
             'width': 800,
-            'scale': 2,
-            'responsive': True,
-            'displayModeBar': True,
-            'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d', 'autoScale2d']
+            'scale': 2
         }
     }
+    # --- MODIFICATION END ---
     
-    return fig
+    return fig, config
 
 def create_counter_bars(df, title, color_scheme='green'):
     """
