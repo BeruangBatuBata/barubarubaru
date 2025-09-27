@@ -4,6 +4,7 @@ import json
 import os
 from collections import defaultdict
 import math
+from math import comb
 
 # --- BRACKET CONFIGURATION FUNCTIONS ---
 def get_bracket_cache_key(tournament_name):
@@ -125,25 +126,50 @@ def build_week_blocks(dates):
     return blocks
 
 ### --- MODIFIED --- ###
-def calculate_series_score_probs(p_win_game, series_format=3):
-    """Calculates the probability of each score in a Best-of-X series."""
-    # Convert potential numpy float to a standard Python float
-    prob_float = float(p_win_game)
-    if not (0 <= prob_float <= 1): return {}
-    
-    p, q = prob_float, 1 - prob_float
-    if series_format == 2: return {"2-0": p**2, "1-1": 2 * p * q, "0-2": q**2}
-    wins_needed = math.ceil((series_format + 1) / 2)
-    results = {}
-    for losses in range(wins_needed):
-        games_played = wins_needed + losses
-        if games_played > series_format: continue
-        combinations = math.comb(games_played - 1, wins_needed - 1)
-        prob_a = combinations * (p ** wins_needed) * (q ** losses)
-        results[f"{wins_needed}-{losses}"] = prob_a
-        prob_b = combinations * (q ** wins_needed) * (p ** losses)
-        results[f"{losses}-{wins_needed}"] = prob_b
-    return dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
+def calculate_series_score_probs(p_win, n_games, blue_team_name="Blue Team", red_team_name="Red Team"):
+    """
+    Calculates the probabilities of all possible series scores in a best-of-n series.
+    p_win: The probability of the 'main' team (e.g., Blue Team) winning a single game.
+    n_games: The total number of games in the series (e.g., 3 for a Bo3).
+    """
+    if p_win is None or not (0 <= p_win <= 1):
+        return {}
+
+    # Use fallback names if None or empty strings are passed
+    blue_name = blue_team_name or "Blue Team"
+    red_name = red_team_name or "Red Team"
+
+    p_lose = 1 - p_win
+    games_to_win = (n_games // 2) + 1
+    probs = {}
+
+    # Calculate probabilities for the Blue team winning the series
+    for games_lost in range(games_to_win):
+        total_games_played = games_to_win + games_lost
+        if total_games_played > n_games:
+            continue
+        
+        combinations = comb(total_games_played - 1, games_to_win - 1)
+        probability = combinations * (p_win ** games_to_win) * (p_lose ** games_lost)
+        
+        score = f"{games_to_win}-{games_lost}"
+        key = f"{blue_name} wins {score}"
+        probs[key] = probability
+
+    # Calculate probabilities for the Red team winning the series
+    for games_won in range(games_to_win):
+        total_games_played = games_to_win + games_won
+        if total_games_played > n_games:
+            continue
+
+        combinations = comb(total_games_played - 1, games_to_win - 1)
+        probability = combinations * (p_lose ** games_to_win) * (p_win ** games_won)
+        
+        score = f"{games_won}-{games_to_win}"
+        key = f"{red_name} wins {score}"
+        probs[key] = probability
+
+    return probs
 ### --- END MODIFIED --- ###
 
 # --- SIMULATION ENGINES ---
