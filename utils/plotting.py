@@ -512,3 +512,4 @@ def plot_presence_bar_chart(df, title):
     }
     
     return fig, config
+
