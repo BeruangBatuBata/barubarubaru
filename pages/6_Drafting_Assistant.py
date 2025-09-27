@@ -272,29 +272,33 @@ with st.expander("Review a Past Game"):
         extradata = game_data['extradata']
         
         # --- MODIFICATION START ---
-        # Correctly assign teams based on side data from the API
+        # Correctly assign teams AND drafts based on side data
         team1_name = match_data['match2opponents'][0].get('name', '').strip()
         team2_name = match_data['match2opponents'][1].get('name', '').strip()
-        team1_side = extradata.get('team1side', 'blue') # Default to blue if not specified
+        team1_side = extradata.get('team1side', 'blue')
 
         if team1_side == 'blue':
             blue_team_name = team1_name
             red_team_name = team2_name
+            for i in range(5):
+                st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
+                st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
+                st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
+                st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
         else: # team1_side is 'red'
             blue_team_name = team2_name
             red_team_name = team1_name
+            for i in range(5):
+                st.session_state.draft['blue_bans'][i] = extradata.get(f'team2ban{i+1}')
+                st.session_state.draft['red_bans'][i] = extradata.get(f'team1ban{i+1}')
+                st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
+                st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
             
         st.session_state.draft['blue_team'] = blue_team_name
         st.session_state.draft['red_team'] = red_team_name
         st.session_state.blue_team_select = blue_team_name
         st.session_state.red_team_select = red_team_name
         # --- MODIFICATION END ---
-        
-        for i in range(5):
-            st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
-            st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
-            st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
-            st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
         
         winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
         st.success(f"✅ **Game Loaded!** Actual Winner: **{winner}**")
