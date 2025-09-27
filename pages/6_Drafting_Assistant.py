@@ -310,6 +310,7 @@ st.markdown("---")
 draft = st.session_state.draft
 prob_placeholder = st.empty()
 analysis_placeholder = st.empty()
+turn_placeholder = st.empty()
 
 
 # Get team names with fallbacks for display
@@ -410,8 +411,6 @@ with prob_placeholder.container():
             st.markdown("---")
             st.markdown(f"**Series Win Probability:** {blue_team_name} **{blue_series_win_prob:.1%}** vs {red_team_name} **{red_series_win_prob:.1%}**")
 
-# --- MODIFICATION START ---
-# Moved AI Draft Analysis back to its original position
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
     c1, c2 = st.columns(2)
@@ -426,7 +425,6 @@ with analysis_placeholder.container():
         with c2:
             st.markdown(f"**Analysis for {red_team_name}**")
             st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
-# --- MODIFICATION END ---
 
 
 blue_col, red_col = st.columns(2)
@@ -507,6 +505,17 @@ elif total_picks < 6: phase, turn = "PICK", ['B', 'R', 'R', 'B', 'B', 'R'][total
 elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
+# --- MODIFICATION START ---
+# Turn display is now back at the top
+with turn_placeholder.container():
+    if turn:
+        team_turn = blue_team_name if turn == 'B' else red_team_name
+        st.header(f"Turn: {team_turn} ({phase})")
+    else:
+        st.header("📋 Draft Complete")
+        st.info("All picks and bans have been completed. Review the analysis above to understand the strengths and weaknesses of each draft.")
+# --- MODIFICATION END ---
+
 st.markdown("---")
 
 # Moved Reset button here
@@ -524,14 +533,10 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
 
 # AI Suggestions and Turn display at the bottom, behind a toggle
 st.toggle("Show AI Suggestions", key='show_ai_suggestions', value=False)
-turn_placeholder = st.empty()
 suggestion_placeholder = st.empty()
 
 if st.session_state.get('show_ai_suggestions', False):
     if turn:
-        team_turn = blue_team_name if turn == 'B' else red_team_name
-        turn_placeholder.header(f"Turn: {team_turn} ({phase})")
-        
         with suggestion_placeholder.container():
             st.subheader("AI Suggestions")
             is_blue_turn = (turn == 'B')
@@ -562,5 +567,4 @@ if st.session_state.get('show_ai_suggestions', False):
                     args=(hero, phase, is_blue_turn, ROLES, HERO_PROFILES)
                 )
     else:
-        turn_placeholder.header("📋 Draft Complete")
         st.info("Draft is complete, no suggestions to show.")
