@@ -446,7 +446,7 @@ def plot_presence_bar_chart(df, title):
         st.warning("No data to plot for presence chart.")
         return None, None
         
-    # Sort the dataframe by 'Presence (%)' to ensure the chart is ordered
+    # Sort the dataframe by 'Presence (%)' to ensure the chart is ordered from highest to lowest
     df_sorted = df.sort_values('Presence (%)', ascending=True)
 
     fig = go.Figure()
@@ -478,17 +478,23 @@ def plot_presence_bar_chart(df, title):
         margin=dict(l=100, r=20, t=60, b=40),
         plot_bgcolor='#fafafa',
         paper_bgcolor='white',
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(range=[0, 105]) # Ensure x-axis goes to at least 100%
     )
     
-    # Add annotations for the total presence percentage
+    # Add annotations for the total presence percentage outside the bars
     annotations = []
-    for y, total_presence in zip(df_sorted['Hero'], df_sorted['Presence (%)']):
-        annotations.append(dict(x=total_presence + 2, y=y, text=f"<b>{total_presence:.1f}%</b>",
-                                font=dict(family='Arial', size=11, color='#1a1a1a'),
-                                showarrow=False))
+    for y_val, total_presence in zip(df_sorted['Hero'], df_sorted['Presence (%)']):
+        annotations.append(dict(
+            x=total_presence, 
+            y=y_val, 
+            text=f"<b>{total_presence:.1f}%</b>",
+            xanchor='left',
+            xshift=5,
+            showarrow=False,
+            font=dict(family='Arial', size=11, color='#1a1a1a')
+        ))
     fig.update_layout(annotations=annotations)
-
 
     # Configuration to disable scroll zoom
     config = {
