@@ -1,6 +1,9 @@
 import streamlit as st
 from utils.sidebar import build_sidebar
 from utils.analysis_functions import calculate_hero_stats_for_team
+# --- MODIFICATION START: Import the new plotting function ---
+from utils.plotting import plot_presence_bar_chart
+# --- MODIFICATION END ---
 import pandas as pd
 import base64
 import os
@@ -84,10 +87,17 @@ else:
         if highest_wr is not None:
             c3.metric(f"Highest Win Rate (>{min_games} games)", highest_wr['Hero'], f"{highest_wr['Win Rate (%)']:.1f}%")
 
-        # Presence Chart
+        # --- MODIFICATION START: Replaced st.bar_chart with the new plotly chart ---
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         df_presence = df_stats.sort_values("Presence (%)", ascending=False).head(10)
-        st.bar_chart(df_presence.set_index('Hero')[['Pick Rate (%)', 'Ban Rate (%)']])
+        
+        # Call the new plotting function
+        fig, config = plot_presence_bar_chart(df_presence, "Top 10 Most Present Heroes")
+        
+        if fig:
+            st.plotly_chart(fig, use_container_width=True, config=config)
+        # --- MODIFICATION END ---
+
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
