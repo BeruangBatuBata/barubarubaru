@@ -122,7 +122,7 @@ with st.expander("Review a Past Game"):
         if selected_game:
             _, match_idx, game_idx = selected_game
             match_data = pooled_matches[match_idx]
-            game__data = match_data['match2games'][game_idx]
+            game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
