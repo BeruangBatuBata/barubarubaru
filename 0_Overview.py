@@ -86,12 +86,9 @@ else:
 
         # --- MODIFICATION START: Use st.bar_chart with explicit x and y to preserve sort order ---
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
-        
         df_presence = df_stats.sort_values(by="Presence (%)", ascending=False).head(10)
-        st.dataframe(df_presence)
-        
         # By setting 'x' and 'y' explicitly, st.bar_chart will respect the DataFrame's sort order
-        st.bar_chart(df_presence, x='Hero', y=['Pick Rate (%)', 'Ban Rate (%)'])
+        st.bar_chart(df_presence, x='Hero', y=['Pick Rate (%)', 'Ban Rate (%)'],sort=False)
         # --- MODIFICATION END ---
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
