@@ -29,15 +29,11 @@ def generate_win_prob_bar(probability, title):
     """
     st.markdown(bar_html, unsafe_allow_html=True)
 
-def update_draft(team, key, section):
-    """Callback function to update the draft in session state."""
-    hero = st.session_state[key]
-    if section == 'picks':
-        role = key.split('_')[-1]
-        st.session_state.draft[team][role] = hero
-    else: # bans
-        index = int(key.split('_')[-1])
-        st.session_state.draft[team][index] = hero
+def update_draft(key):
+    """Generic callback to update the draft state."""
+    # This function will be simpler and just trigger a rerun
+    # The main script logic will handle the state updates
+    pass
 
 # --- Load Model & Data ---
 model_assets = load_prediction_assets()
@@ -153,14 +149,12 @@ with blue_col:
     for i in range(5):
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['blue_bans'][i]])
         key = f"b_ban_{i}"
-        ban_cols[i].selectbox(f"B{i+1}", available, key=key, index=available.index(draft['blue_bans'][i]) if draft['blue_bans'][i] in available else 0,
-                              on_change=update_draft, args=('blue_bans', key, 'bans'))
+        draft['blue_bans'][i] = ban_cols[i].selectbox(f"B{i+1}", available, key=key, index=available.index(draft['blue_bans'][i]) if draft['blue_bans'][i] in available else 0, on_change=update_draft, args=(key,))
     st.subheader("Picks")
     for role in ROLES:
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['blue_picks'][role]])
         key = f"b_pick_{role}"
-        st.selectbox(role, available, key=key, index=available.index(draft['blue_picks'][role]) if draft['blue_picks'][role] in available else 0,
-                     on_change=update_draft, args=('blue_picks', key, 'picks'))
+        draft['blue_picks'][role] = st.selectbox(role, available, key=key, index=available.index(draft['blue_picks'][role]) if draft['blue_picks'][role] in available else 0, on_change=update_draft, args=(key,))
 
 with red_col:
     st.header("🔶 Red Team")
@@ -169,14 +163,12 @@ with red_col:
     for i in range(5):
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['red_bans'][i]])
         key = f"r_ban_{i}"
-        ban_cols[i].selectbox(f"R{i+1}", available, key=key, index=available.index(draft['red_bans'][i]) if draft['red_bans'][i] in available else 0,
-                              on_change=update_draft, args=('red_bans', key, 'bans'))
+        draft['red_bans'][i] = ban_cols[i].selectbox(f"R{i+1}", available, key=key, index=available.index(draft['red_bans'][i]) if draft['red_bans'][i] in available else 0, on_change=update_draft, args=(key,))
     st.subheader("Picks")
     for role in ROLES:
         available = [None] + sorted([h for h in ALL_HEROES if h not in taken_heroes or h == draft['red_picks'][role]])
         key = f"r_pick_{role}"
-        st.selectbox(role, available, key=key, index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0,
-                     on_change=update_draft, args=('red_picks', key, 'picks'))
+        draft['red_picks'][role] = st.selectbox(role, available, key=key, index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0, on_change=update_draft, args=(key,))
 
 # --- Calculations & Predictions ---
 blue_p = {k: v for k, v in draft['blue_picks'].items() if v}
