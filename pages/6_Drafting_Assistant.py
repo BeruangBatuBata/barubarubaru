@@ -64,44 +64,46 @@ with st.expander("Review a Past Game"):
     selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
     selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
-    # --- REWRITTEN LOGIC FOR FILTERING AND DISPLAYING GAMES ---
+    # --- REWRITTEN LOGIC FOR FILTERING ---
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
-            # 1. Check if game data is valid
             if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
                 continue
+            
             game_opps = game.get('opponents', [])
             if len(game_opps) < 2:
                 continue
-
-            # 2. Get game-specific info
+            
             blue_team_name = game_opps[0].get('name')
             red_team_name = game_opps[1].get('name')
-            
+            game_teams = {blue_team_name, red_team_name}
+
             match_date = None
             if match.get('date'):
                 try:
                     match_date = datetime.fromisoformat(match['date'].replace('Z', '+00:00')).date()
                 except (ValueError, TypeError): pass
 
-            # 3. Apply all filters
-            if selected_team1 and selected_team1 not in [blue_team_name, red_team_name]:
-                continue
-            if selected_team2 and selected_team2 not in [blue_team_name, red_team_name]:
-                continue
-            if selected_date and selected_date != match_date:
-                continue
+            # Apply all filters at once
+            passes_team1 = not selected_team1 or selected_team1 in game_teams
+            passes_team2 = not selected_team2 or selected_team2 in game_teams
+            passes_date = not selected_date or selected_date == match_date
+            
+            # Additional check for when two teams are selected
+            if selected_team1 and selected_team2:
+                if not (selected_team1 in game_teams and selected_team2 in game_teams):
+                    continue
 
-            # 4. If all checks pass, create label and add to list
-            label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
-            if match_date:
-                label += f" - {match_date.strftime('%Y-%m-%d')}"
-            playable_games.append((label, match_idx, game_idx))
+            if passes_team1 and passes_team2 and passes_date:
+                label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+                if match_date:
+                    label += f" - {match_date.strftime('%Y-%m-%d')}"
+                playable_games.append((label, match_idx, game_idx))
 
     if selected_team1 and selected_team2 and selected_team1 == selected_team2:
         st.warning("Please select two different teams.")
-        playable_games = [] # Clear the list if the same team is selected
+        playable_games = []
 
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
