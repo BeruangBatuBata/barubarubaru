@@ -126,7 +126,7 @@ def build_week_blocks(dates):
     return blocks
 
 ### --- MODIFIED --- ###
-def calculate_series_score_probs(p_win, n_games, blue_team_name="Blue Team", red_team_name="Red Team"):
+def calculate_series_score_probs(p_win, n_games):
     """
     Calculates the probabilities of all possible series scores in a best-of-n series.
     p_win: The probability of the 'main' team (e.g., Blue Team) winning a single game.
@@ -134,10 +134,6 @@ def calculate_series_score_probs(p_win, n_games, blue_team_name="Blue Team", red
     """
     if p_win is None or not (0 <= p_win <= 1):
         return {}
-
-    # Use fallback names if None or empty strings are passed
-    blue_name = blue_team_name or "Blue Team"
-    red_name = red_team_name or "Red Team"
 
     p_lose = 1 - p_win
     games_to_win = (n_games // 2) + 1
@@ -153,8 +149,7 @@ def calculate_series_score_probs(p_win, n_games, blue_team_name="Blue Team", red
         probability = combinations * (p_win ** games_to_win) * (p_lose ** games_lost)
         
         score = f"{games_to_win}-{games_lost}"
-        key = f"{blue_name} wins {score}"
-        probs[key] = probability
+        probs[score] = probability
 
     # Calculate probabilities for the Red team winning the series
     for games_won in range(games_to_win):
@@ -166,8 +161,7 @@ def calculate_series_score_probs(p_win, n_games, blue_team_name="Blue Team", red
         probability = combinations * (p_lose ** games_to_win) * (p_win ** games_won)
         
         score = f"{games_won}-{games_to_win}"
-        key = f"{red_name} wins {score}"
-        probs[key] = probability
+        probs[score] = probability
 
     return probs
 ### --- END MODIFIED --- ###
