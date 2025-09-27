@@ -298,8 +298,11 @@ with st.expander("Review a Past Game"):
         st.session_state.blue_team_select = blue_team_name
         st.session_state.red_team_select = red_team_name
         
-        winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
-        st.success(f"✅ **Game Loaded!** Actual Winner: **{winner}**")
+        # --- MODIFICATION START ---
+        # Determine winner name based on the now-correct team assignments
+        winner_name = blue_team_name if str(game_data.get('winner')) == '1' else red_team_name
+        st.success(f"✅ **Game Loaded!** Actual Winner: **{winner_name}**")
+        # --- MODIFICATION END ---
         
         st.rerun()
 
@@ -311,6 +314,12 @@ prob_placeholder = st.empty()
 turn_placeholder = st.empty()
 analysis_placeholder = st.empty()
 suggestion_placeholder = st.empty()
+
+# --- MODIFICATION START ---
+# Get team names with fallbacks for display
+blue_team_name = draft.get('blue_team') or "Blue Team"
+red_team_name = draft.get('red_team') or "Red Team"
+# --- MODIFICATION END ---
 
 c1, c2, c3 = st.columns([2, 2, 1])
 
@@ -358,7 +367,9 @@ blue_col, red_col = st.columns(2)
 
 # Blue team section with callbacks
 with blue_col:
-    st.header("🔷 Blue Team")
+    # --- MODIFICATION START ---
+    st.header(f"🔷 {blue_team_name}")
+    # --- MODIFICATION END ---
     st.subheader("Bans")
     ban_cols = st.columns(5)
     for i in range(5):
@@ -392,7 +403,9 @@ with blue_col:
 
 # Red team section with callbacks
 with red_col:
-    st.header("🔶 Red Team")
+    # --- MODIFICATION START ---
+    st.header(f"🔶 {red_team_name}")
+    # --- MODIFICATION END ---
     st.subheader("Bans")
     ban_cols = st.columns(5)
     for i in range(5):
@@ -426,9 +439,7 @@ with red_col:
 
 # Add a reset draft button
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
-    # --- MODIFICATION START ---
     # Only reset the application's central state dictionary.
-    # The UI will update automatically on rerun.
     st.session_state.draft = {
         'blue_team': None, 
         'red_team': None,
@@ -437,7 +448,6 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
-    # --- MODIFICATION END ---
     st.session_state.selected_past_game = None
     st.rerun()
     
@@ -459,9 +469,6 @@ with prob_placeholder.container():
         series_probs = calculate_series_score_probs(prob_overall, series_format)
         if series_probs:
             st.write(f"**Best-of-{series_format} Series Score Probability**")
-            
-            blue_team_name = draft['blue_team'] or "Blue Team"
-            red_team_name = draft['red_team'] or "Red Team"
             
             col1, col2 = st.columns(2)
             
@@ -514,8 +521,10 @@ elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
 if turn:
-    team_turn = "Blue Team" if turn == 'B' else "Red Team"
+    # --- MODIFICATION START ---
+    team_turn = blue_team_name if turn == 'B' else red_team_name
     turn_placeholder.header(f"Turn: {team_turn} ({phase})")
+    # --- MODIFICATION END ---
 
 with suggestion_placeholder.container():
     if turn:
@@ -529,9 +538,10 @@ with suggestion_placeholder.container():
         )
         
         turn_color = "🔷" if is_blue_turn else "🔶"
-        team_name = draft['blue_team'] if is_blue_turn else draft['red_team']
-        team_name = team_name or ("Blue Team" if is_blue_turn else "Red Team")
+        # --- MODIFICATION START ---
+        team_name = blue_team_name if is_blue_turn else red_team_name
         st.markdown(f"{turn_color} **{team_name}'s {phase}**")
+        # --- MODIFICATION END ---
         
         for idx, (hero, score) in enumerate(suggestions[:5]):
             hero_role = ""
