@@ -57,52 +57,129 @@ if 'draft' not in st.session_state:
 st.title("🎯 Professional Drafting Assistant")
 
 with st.expander("Review a Past Game"):
-    all_teams_for_filter = sorted(list(set(o['name'] for m in pooled_matches for o in m.get('match2opponents', []) if 'name' in o)))
+    # First, extract all unique teams and dates from PLAYED matches
+    all_teams = set()
+    all_dates = set()
     
-    col1, col2, col3 = st.columns(3)
-    selected_team1 = col1.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
-    selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
-    selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
-
-    # --- REWRITTEN & SIMPLIFIED FILTERING LOGIC ---
-    playable_games = []
+    for match in pooled_matches:
+        opps = match.get('match2opponents', [])
+        if len(opps) >= 2:
+            # Check if match has been played by looking for games with extradata
+            has_played_games = any(
+                game.get('extradata') and game.get('winner') in ['1', '2']
+                for game in match.get('match2games', [])
+            )
+            
+            if has_played_games:
+                all_teams.add(opps[0].get('name', ''))
+                all_teams.add(opps[1].get('name', ''))
+                
+                # Extract date from the match
+                match_date = match.get('date') or match.get('datetime') or match.get('timestamp')
+                if match_date:
+                    try:
+                        date_obj = pd.to_datetime(match_date)
+                        all_dates.add(date_obj.strftime('%Y-%m-%d'))
+                    except:
+                        pass
+    
+    # Sort teams and dates
+    sorted_teams = ['Any Team'] + sorted([t for t in all_teams if t])
+    sorted_dates = ['Any Date'] + sorted([d for d in all_dates if d], reverse=True)  # Most recent first
+    
+    # Filter controls
+    col1, col2, col3 = st.columns([2, 2, 2])
+    
+    with col1:
+        filter_team1 = st.selectbox("Team 1:", sorted_teams, key="filter_team1")
+    
+    with col2:
+        filter_team2 = st.selectbox("Team 2:", sorted_teams, key="filter_team2")
+    
+    with col3:
+        filter_date = st.selectbox("Date:", sorted_dates, key="filter_date")
+    
+    # Build filtered games list
+    filtered_games = []
+    
     for match_idx, match in enumerate(pooled_matches):
-        for game_idx, game in enumerate(match.get('match2games', [])):
-            if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
+        opps = match.get('match2opponents', [])
+        if len(opps) < 2:
+            continue
+        
+        team1_name = opps[0].get('name', '')
+        team2_name = opps[1].get('name', '')
+        
+        # Apply team filters
+        if filter_team1 != 'Any Team' and filter_team2 != 'Any Team':
+            # Both teams specified - check exact match (order doesn't matter)
+            if not ((team1_name == filter_team1 and team2_name == filter_team2) or 
+                    (team1_name == filter_team2 and team2_name == filter_team1)):
                 continue
-            
-            game_opps = game.get('opponents', [])
-            if len(game_opps) < 2:
+        elif filter_team1 != 'Any Team':
+            # Only team 1 specified
+            if filter_team1 not in [team1_name, team2_name]:
                 continue
-            
-            blue_team_name = game_opps[0].get('name')
-            red_team_name = game_opps[1].get('name')
-            game_teams = {blue_team_name, red_team_name}
-
-            # Apply filters
-            if (selected_team1 and selected_team1 not in game_teams) or \
-               (selected_team2 and selected_team2 not in game_teams):
+        elif filter_team2 != 'Any Team':
+            # Only team 2 specified
+            if filter_team2 not in [team1_name, team2_name]:
                 continue
-            
-            match_date = None
-            if match.get('date'):
-                try:
-                    match_date = datetime.fromisoformat(match['date'].replace('Z', '+00:00')).date()
-                except (ValueError, TypeError): pass
-
-            if selected_date and selected_date != match_date:
-                continue
-
-            label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+        
+        # Apply date filter
+        if filter_date != 'Any Date':
+            match_date = match.get('date') or match.get('datetime') or match.get('timestamp')
             if match_date:
-                label += f" - {match_date.strftime('%Y-%m-%d')}"
-            playable_games.append((label, match_idx, game_idx))
-
-    if selected_team1 and selected_team2 and selected_team1 == selected_team2:
-        st.warning("Please select two different teams.")
-        playable_games = []
-
-    selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
+                try:
+                    date_obj = pd.to_datetime(match_date)
+                    if date_obj.strftime('%Y-%m-%d') != filter_date:
+                        continue
+                except:
+                    continue
+            else:
+                continue
+        
+        # Add ONLY PLAYED games from this match
+        for game_idx, game in enumerate(match.get('match2games', [])):
+            extradata = game.get('extradata')
+            winner = game.get('winner')
+            
+            # Check if game was actually played
+            if extradata and winner in ['1', '2']:
+                # Verify it has actual draft data
+                has_draft_data = any(
+                    extradata.get(f'team1champion{i}') or extradata.get(f'team2champion{i}')
+                    for i in range(1, 6)
+                )
+                
+                if has_draft_data:
+                    # Format the date for display
+                    match_date = match.get('date') or match.get('datetime') or match.get('timestamp')
+                    date_str = ""
+                    if match_date:
+                        try:
+                            date_obj = pd.to_datetime(match_date)
+                            date_str = date_obj.strftime('%Y-%m-%d')
+                        except:
+                            pass
+                    
+                    label = f"{team1_name} vs {team2_name} - Game {game_idx + 1}"
+                    if date_str:
+                        label += f" ({date_str})"
+                    
+                    filtered_games.append((label, match_idx, game_idx))
+    
+    # Game selector
+    if filtered_games:
+        st.write(f"Found {len(filtered_games)} played game{'s' if len(filtered_games) > 1 else ''}")
+        selected_game = st.selectbox(
+            "Select a game:", 
+            [None] + filtered_games, 
+            format_func=lambda x: x[0] if x else "Select a game...", 
+            key="filtered_game_selector"
+        )
+    else:
+        st.info("No played games found matching the selected filters.")
+        selected_game = None
 
     if st.button("Load Selected Game"):
         if selected_game:
