@@ -216,8 +216,21 @@ elif total_picks < 6: phase, turn = "PICK", ['B', 'R', 'R', 'B', 'B', 'R'][total
 elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
-team_turn = "Blue Team" if turn == 'B' else "Red Team"
-turn_placeholder.header(f"Turn: {team_turn} ({phase})")
+# --- MODIFIED SECTION ---
+if turn == 'B':
+    team_turn = draft.get('blue_team') or "Blue Team"
+elif turn == 'R':
+    team_turn = draft.get('red_team') or "Red Team"
+else:
+    team_turn = "Draft Complete"
+
+# Use a different variable for phase to avoid conflict
+turn_phase_text = phase if phase != "DRAFT COMPLETE" else ""
+if team_turn != "Draft Complete":
+    turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})")
+else:
+    turn_placeholder.header(f"{team_turn}")
+# --- END MODIFIED SECTION ---
 
 with suggestion_placeholder.container():
     if turn:
