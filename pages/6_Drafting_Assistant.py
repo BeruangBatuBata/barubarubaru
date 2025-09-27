@@ -201,14 +201,12 @@ with prob_placeholder.container():
     generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
     
-    # --- MODIFIED SECTION ---
     series_probs = calculate_series_score_probs(
         prob_overall, 
         series_format,
         draft['blue_team'],
         draft['red_team']
     )
-    # --- END MODIFIED SECTION ---
     
     if series_probs:
         st.write(f"**Best-of-{series_format} Series Score Probability**")
