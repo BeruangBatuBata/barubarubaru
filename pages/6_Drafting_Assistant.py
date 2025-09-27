@@ -127,12 +127,25 @@ with st.expander("Review a Past Game"):
             
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
             st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
+            
             for i in range(5):
                 st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
-                st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
-                st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
-            
+
+                # --- MODIFIED SECTION ---
+                # Blue Team
+                hero_blue = extradata.get(f'team1champion{i+1}')
+                if hero_blue and hero_blue not in ALL_HEROES:
+                    st.warning(f"'{hero_blue}' is not a recognized hero in your draft_assets.json file. Please update it.")
+                st.session_state.draft['blue_picks'][ROLES[i]] = hero_blue
+
+                # Red Team
+                hero_red = extradata.get(f'team2champion{i+1}')
+                if hero_red and hero_red not in ALL_HEROES:
+                    st.warning(f"'{hero_red}' is not a recognized hero in your draft_assets.json file. Please update it.")
+                st.session_state.draft['red_picks'][ROLES[i]] = hero_red
+                # --- END MODIFIED SECTION ---
+
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
             st.rerun()
@@ -216,7 +229,6 @@ elif total_picks < 6: phase, turn = "PICK", ['B', 'R', 'R', 'B', 'B', 'R'][total
 elif total_bans < 10: phase, turn = "BAN", ['R', 'B', 'R', 'B'][total_bans - 6]
 elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 6]
 
-# --- MODIFIED SECTION ---
 if turn == 'B':
     team_turn = draft.get('blue_team') or "Blue Team"
 elif turn == 'R':
@@ -230,7 +242,6 @@ if team_turn != "Draft Complete":
     turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})")
 else:
     turn_placeholder.header(f"{team_turn}")
-# --- END MODIFIED SECTION ---
 
 with suggestion_placeholder.container():
     if turn:
