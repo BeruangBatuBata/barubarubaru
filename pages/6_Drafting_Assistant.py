@@ -119,6 +119,8 @@ if 'draft' not in st.session_state:
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
+if 'selected_past_game' not in st.session_state:
+    st.session_state.selected_past_game = None
 
 # --- UI & Logic ---
 st.title("🎯 Professional Drafting Assistant")
@@ -238,12 +240,23 @@ with st.expander("Review a Past Game"):
     # Game selector
     if filtered_games:
         st.write(f"Found {len(filtered_games)} played game{'s' if len(filtered_games) > 1 else ''}")
+        
+        # --- MODIFICATION START ---
+        # Find the index of the currently loaded game to set the selectbox default
+        game_options = [None] + filtered_games
+        current_selection_index = 0
+        if st.session_state.selected_past_game in game_options:
+            current_selection_index = game_options.index(st.session_state.selected_past_game)
+
         selected_game = st.selectbox(
             "Select a game:", 
-            [None] + filtered_games, 
+            game_options, 
+            index=current_selection_index,
             format_func=lambda x: x[0] if x else "Select a game...", 
             key="filtered_game_selector"
         )
+        # --- MODIFICATION END ---
+
     else:
         st.info("No played games found matching the selected filters.")
         selected_game = None
@@ -254,6 +267,11 @@ with st.expander("Review a Past Game"):
         load_button = st.button("Load & Analyze Game", type="primary", disabled=(selected_game is None))
     
     if load_button and selected_game:
+        # --- MODIFICATION START ---
+        # Store the selected game in the session state
+        st.session_state.selected_past_game = selected_game
+        # --- MODIFICATION END ---
+        
         _, match_idx, game_idx = selected_game
         match_data = pooled_matches[match_idx]
         game_data = match_data['match2games'][game_idx]
@@ -410,6 +428,10 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
+    # --- MODIFICATION START ---
+    # Also reset the selected past game
+    st.session_state.selected_past_game = None
+    # --- MODIFICATION END ---
     st.rerun()
     
 # --- Calculations ---
