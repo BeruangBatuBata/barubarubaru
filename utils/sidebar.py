@@ -42,6 +42,7 @@ def build_sidebar():
         # --- Create Data Structures for Grouping ---
         tournaments_by_region = defaultdict(list)
         tournaments_by_year = defaultdict(list)
+        all_tournament_names = list(ALL_TOURNAMENTS.keys())
         for name, data in ALL_TOURNAMENTS.items():
             tournaments_by_region[data['region']].append(name)
             tournaments_by_year[data['year']].append(name)
@@ -55,7 +56,6 @@ def build_sidebar():
             # It updates the central dictionary with the new value from the specific widget.
             st.session_state.tournament_selections[t_name] = st.session_state[f"{key_prefix}_{t_name}"]
 
-        # --- MODIFICATION START ---
         def select_all(group, value=True):
             # This function now updates both the central state and the individual widget states
             for t_name in group:
@@ -63,6 +63,12 @@ def build_sidebar():
                 # Update the widget state for both tabs to keep them in sync
                 st.session_state[f"region_chk_{t_name}"] = value
                 st.session_state[f"year_chk_{t_name}"] = value
+
+        # --- MODIFICATION START: Global Select/Deselect All ---
+        col1_all, col2_all = st.columns(2)
+        col1_all.button("Select All Tournaments", key="select_all_global", on_click=select_all, args=(all_tournament_names, True), use_container_width=True)
+        col2_all.button("Deselect All Tournaments", key="deselect_all_global", on_click=select_all, args=(all_tournament_names, False), use_container_width=True)
+        st.sidebar.markdown("---")
         # --- MODIFICATION END ---
         
         # --- Tabs for Region and Year ---
