@@ -1,13 +1,5 @@
 import streamlit as st
 from collections import defaultdict
-import sys
-import os
-
-# --- FIX FOR IMPORT ERROR ---
-# This ensures the app can find the 'utils' directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# --- END FIX ---
-
 from utils.drafting_ai import load_prediction_assets, predict_draft_outcome, get_ai_suggestions, generate_prediction_explanation
 from utils.simulation import calculate_series_score_probs
 from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
@@ -72,7 +64,6 @@ with st.expander("Review a Past Game"):
     selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
     selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
-    # --- Logic to show games without requiring extradata/winner ---
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
@@ -80,8 +71,13 @@ with st.expander("Review a Past Game"):
             if len(game_opps) < 2:
                 continue
 
-            blue_team_name = game_opps[0].get('name')
-            red_team_name = game_opps[1].get('name')
+            # --- CORRECTED LOGIC ---
+            # Ensure the 'name' key exists before trying to access it
+            if 'name' not in game_opps[0] or 'name' not in game_opps[1]:
+                continue
+            
+            blue_team_name = game_opps[0]['name']
+            red_team_name = game_opps[1]['name']
             game_teams = {blue_team_name, red_team_name}
 
             # Apply filters
