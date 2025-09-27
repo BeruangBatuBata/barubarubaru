@@ -90,15 +90,16 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
         st.warning("No data to plot.")
         return None, None
 
-    # --- MODIFICATION START: Ensure data is sorted for plotting ---
-    # Because the y-axis is reversed, sorting ascending places the highest value at the top.
+    # --- MODIFICATION START: Corrected sorting logic ---
     if chart_type == 'top':
         sort_column = 'Win Rate (%)'
-    else: # trending charts
-        sort_column = 'Change (%)' if chart_type == 'trending_up' else 'Change (%)'
-    
-    # For trending down, we want the biggest negative change at the top, so we sort ascending by change
-    df = df.sort_values(by=sort_column, ascending=(chart_type != 'trending_down'))
+        df = df.sort_values(by=sort_column, ascending=True)
+    elif chart_type == 'trending_up':
+        sort_column = 'Change (%)'
+        df = df.sort_values(by=sort_column, ascending=True)
+    elif chart_type == 'trending_down':
+        sort_column = 'Change (%)'
+        df = df.sort_values(by=sort_column, ascending=False)
     # --- MODIFICATION END ---
 
     # Prepare data based on chart type
@@ -230,7 +231,7 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
         ),
         yaxis=dict(
             showgrid=False,
-            autorange='reversed',
+            # autorange='reversed', # This is removed to use the DataFrame's sort order directly
             tickfont=dict(size=11, color='#333333'),
             tickmode='linear'
         ),
@@ -309,7 +310,7 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
         layer="below"
     )
     
-    # --- MODIFICATION START: Disable scroll zoom ---
+    # Add custom modebar buttons
     config = {
         'scrollZoom': False, # This disables zooming with the scroll wheel
         'displayModeBar': True,
@@ -323,7 +324,6 @@ def plot_synergy_bar_chart_interactive(df, title, chart_type='top'):
             'scale': 2
         }
     }
-    # --- MODIFICATION END ---
     
     return fig, config
 
