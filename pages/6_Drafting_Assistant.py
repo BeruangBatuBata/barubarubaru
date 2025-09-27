@@ -2,9 +2,10 @@ import streamlit as st
 from collections import defaultdict
 import sys
 import os
+import pandas as pd
+from datetime import datetime
 
 # --- FIX FOR IMPORT ERROR ---
-# This ensures the app can find the 'utils' directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # --- END FIX ---
 
@@ -12,8 +13,6 @@ from utils.drafting_ai import load_prediction_assets, predict_draft_outcome, get
 from utils.simulation import calculate_series_score_probs
 from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
 from utils.sidebar import build_sidebar
-import pandas as pd
-from datetime import datetime
 
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
 build_sidebar()
@@ -75,15 +74,22 @@ with st.expander("Review a Past Game"):
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
-            if not game.get('opponents'):
+            game_opps = game.get('opponents')
+            if not game_opps or len(game_opps) < 2:
                 continue
 
-            game_opps = game.get('opponents', [])
-            if len(game_opps) < 2 or not game_opps[0].get('name') or not game_opps[1].get('name'):
+            blue_team_info = game_opps[0]
+            red_team_info = game_opps[1]
+
+            if not isinstance(blue_team_info, dict) or not isinstance(red_team_info, dict):
+                continue
+                
+            blue_team_name = blue_team_info.get('name')
+            red_team_name = red_team_info.get('name')
+
+            if not blue_team_name or not red_team_name:
                 continue
 
-            blue_team_name = game_opps[0]['name']
-            red_team_name = game_opps[1]['name']
             game_teams = {blue_team_name, red_team_name}
 
             # --- Filtering Logic ---
@@ -228,7 +234,7 @@ if turn == 'B': team_turn = draft.get('blue_team') or "Blue Team"
 elif turn == 'R': team_turn = draft.get('red_team') or "Red Team"
 else: team_turn = "Draft Complete"
 turn_phase_text = phase if phase != "DRAFT COMPLETE" else ""
-turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if team_turn != "Draft Complete" else f"{team_turn}")
+turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if turn_turn != "Draft Complete" else f"{team_turn}")
 
 with suggestion_placeholder.container():
     if turn:
