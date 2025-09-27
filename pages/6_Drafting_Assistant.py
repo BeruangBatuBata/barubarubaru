@@ -5,6 +5,7 @@ from utils.simulation import calculate_series_score_probs
 from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
 from utils.sidebar import build_sidebar
 import pandas as pd
+from datetime import datetime
 
 st.set_page_config(layout="wide", page_title="Drafting Assistant")
 build_sidebar()
@@ -55,13 +56,53 @@ if 'draft' not in st.session_state:
 st.title("🎯 Professional Drafting Assistant")
 
 with st.expander("Review a Past Game"):
+    # Filters
+    all_teams_for_filter = sorted([team for team in ALL_TEAMS if team is not None])
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        selected_team1 = st.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
+    with col2:
+        selected_team2 = st.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
+    with col3:
+        selected_date = st.date_input("Filter by Date:", None, key="filter_date")
+
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         opps = match.get('match2opponents', [])
         if len(opps) < 2: continue
+
+        team1_name = opps[0].get('name')
+        team2_name = opps[1].get('name')
+        
+        # Date filtering
+        match_date_str = match.get('date')
+        match_date = None
+        if match_date_str:
+            try:
+                # Assuming date is in ISO format, adjust if necessary
+                match_date = datetime.fromisoformat(match_date_str.replace('Z', '+00:00')).date()
+            except (ValueError, TypeError):
+                # Handle cases where the date format might be different or invalid
+                pass
+
+
+        # Apply filters
+        if selected_team1 and selected_team1 not in [team1_name, team2_name]:
+            continue
+        if selected_team2 and selected_team2 not in [team1_name, team2_name]:
+            continue
+        if selected_date and selected_date != match_date:
+            continue
+        if selected_team1 and selected_team2 and selected_team1 == selected_team2:
+            st.warning("Please select two different teams.")
+            continue
+            
         for game_idx, game in enumerate(match.get('match2games', [])):
             if game.get('extradata'):
-                label = f"{opps[0].get('name')} vs {opps[1].get('name')} (Game {game_idx + 1})"
+                label = f"{team1_name} vs {team2_name} (Game {game_idx + 1})"
+                if match_date:
+                    label += f" - {match_date.strftime('%Y-%m-%d')}"
                 playable_games.append((label, match_idx, game_idx))
     
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
@@ -180,4 +221,3 @@ with suggestion_placeholder.container():
         for hero, score in suggestions[:5]:
             label = f"{hero} ({'Threat' if phase == 'BAN' else 'Win Prob'}: {score:.1%})"
             st.button(label, key=f"sug_{hero}")
-
