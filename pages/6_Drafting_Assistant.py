@@ -31,8 +31,8 @@ def generate_win_prob_bar(probability, title):
 
 def update_draft(key):
     """Generic callback to update the draft state."""
-    # This function will be simpler and just trigger a rerun
-    # The main script logic will handle the state updates
+    # This dummy function just ensures that Streamlit
+    # saves the widget's state on any change.
     pass
 
 # --- Load Model & Data ---
@@ -133,10 +133,37 @@ st.markdown("---")
 draft = st.session_state.draft
 prob_placeholder, turn_placeholder, analysis_placeholder, suggestion_placeholder = st.empty(), st.empty(), st.empty(), st.empty()
 
-c1, c2, c3 = st.columns([2, 2, 1])
-draft['blue_team'] = c1.selectbox("Blue Team:", ALL_TEAMS, key='blue_team_select', index=ALL_TEAMS.index(draft['blue_team']) if draft['blue_team'] in ALL_TEAMS else 0)
-draft['red_team'] = c2.selectbox("Red Team:", ALL_TEAMS, key='red_team_select', index=ALL_TEAMS.index(draft['red_team']) if draft['red_team'] in ALL_TEAMS else 0)
+c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
+
+# --- MODIFIED SECTION ---
+draft['blue_team'] = c1.selectbox(
+    "Blue Team:", 
+    ALL_TEAMS, 
+    key='blue_team_select', 
+    index=ALL_TEAMS.index(draft['blue_team']) if draft['blue_team'] in ALL_TEAMS else 0,
+    on_change=update_draft, 
+    args=('blue_team_select',)
+)
+draft['red_team'] = c2.selectbox(
+    "Red Team:", 
+    ALL_TEAMS, 
+    key='red_team_select', 
+    index=ALL_TEAMS.index(draft['red_team']) if draft['red_team'] in ALL_TEAMS else 0,
+    on_change=update_draft, 
+    args=('red_team_select',)
+)
+# --- END MODIFIED SECTION ---
+
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
+
+if c4.button("Clear Draft"):
+    st.session_state.draft = {
+        'blue_team': None, 'red_team': None,
+        'blue_bans': [None]*5, 'red_bans': [None]*5,
+        'blue_picks': {role: None for role in ROLES},
+        'red_picks': {role: None for role in ROLES}
+    }
+    st.rerun()
 
 blue_col, red_col = st.columns(2)
 taken_heroes = {v for k, v in draft['blue_picks'].items() if v} | {v for k, v in draft['red_picks'].items() if v} | set(draft['blue_bans']) | set(draft['red_bans'])
