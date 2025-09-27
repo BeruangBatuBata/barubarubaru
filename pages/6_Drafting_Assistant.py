@@ -65,23 +65,50 @@ if 'draft' not in st.session_state:
 st.title("🎯 Professional Drafting Assistant")
 
 with st.expander("Review a Past Game"):
-    # --- REMOVED ALL FILTERING FOR DEBUGGING ---
+    all_teams_for_filter = sorted(list(set(o['name'] for m in pooled_matches for o in m.get('match2opponents', []) if o.get('name'))))
+    
+    col1, col2, col3 = st.columns(3)
+    selected_team1 = col1.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
+    selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
+    selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
+
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
         for game_idx, game in enumerate(match.get('match2games', [])):
-            game_opps = game.get('opponents', [])
-            if len(game_opps) < 2:
+            if not game.get('opponents'):
                 continue
 
-            blue_team_name = game_opps[0].get('name')
-            red_team_name = game_opps[1].get('name')
+            game_opps = game.get('opponents', [])
+            if len(game_opps) < 2 or not game_opps[0].get('name') or not game_opps[1].get('name'):
+                continue
+
+            blue_team_name = game_opps[0]['name']
+            red_team_name = game_opps[1]['name']
+            game_teams = {blue_team_name, red_team_name}
+
+            # --- Filtering Logic ---
+            if selected_team1 and selected_team1 not in game_teams:
+                continue
+            if selected_team2 and selected_team2 not in game_teams:
+                continue
             
-            # Simple check for valid team names
-            if not blue_team_name or not red_team_name:
+            match_date = None
+            if match.get('date'):
+                try:
+                    match_date = datetime.fromisoformat(match['date'].replace('Z', '+00:00')).date()
+                except (ValueError, TypeError): pass
+            
+            if selected_date and selected_date != match_date:
                 continue
 
             label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+            if match_date:
+                label += f" - {match_date.strftime('%Y-%m-%d')}"
             playable_games.append((label, match_idx, game_idx))
+
+    if selected_team1 and selected_team2 and selected_team1 == selected_team2:
+        st.warning("Please select two different teams.")
+        playable_games = []
 
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
@@ -201,7 +228,7 @@ if turn == 'B': team_turn = draft.get('blue_team') or "Blue Team"
 elif turn == 'R': team_turn = draft.get('red_team') or "Red Team"
 else: team_turn = "Draft Complete"
 turn_phase_text = phase if phase != "DRAFT COMPLETE" else ""
-turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if turn_turn != "Draft Complete" else f"{team_turn}")
+turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if team_turn != "Draft Complete" else f"{team_turn}")
 
 with suggestion_placeholder.container():
     if turn:
