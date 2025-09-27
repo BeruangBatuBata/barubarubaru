@@ -41,38 +41,52 @@ def build_sidebar():
 
         # --- Create Data Structures for Grouping ---
         tournaments_by_region = defaultdict(list)
-        tournaments_by_year = defaultdict(list)
+        tournaments_by_split = defaultdict(list)
+        tournaments_by_league = defaultdict(list)
         all_tournament_names = list(ALL_TOURNAMENTS.keys())
+
         for name, data in ALL_TOURNAMENTS.items():
             tournaments_by_region[data['region']].append(name)
-            tournaments_by_year[data['year']].append(name)
+            tournaments_by_split[data.get('split', 'Uncategorized')].append(name)
+            tournaments_by_league[data.get('league', 'Uncategorized')].append(name)
         
         sorted_regions = ['International'] + sorted([r for r in tournaments_by_region if r != 'International'])
-        sorted_years = sorted(tournaments_by_year.keys(), reverse=True)
+        sorted_splits = sorted(tournaments_by_split.keys(), reverse=True)
+        sorted_leagues = sorted(tournaments_by_league.keys())
+
 
         # --- Callback Functions ---
-        def sync_checkbox_state(t_name, key_prefix):
-            # This function is called when a checkbox changes.
-            # It updates the central dictionary with the new value from the specific widget.
-            st.session_state.tournament_selections[t_name] = st.session_state[f"{key_prefix}_{t_name}"]
+        def sync_checkbox_state(t_name):
+            # Find which checkbox was ticked and update the central state
+            # This is more complex now with 3 possible keys per tournament
+            key_prefixes = ["region_chk_", "split_chk_", "league_chk_"]
+            for prefix in key_prefixes:
+                key = f"{prefix}{t_name}"
+                if key in st.session_state:
+                    st.session_state.tournament_selections[t_name] = st.session_state[key]
+                    break # Stop after finding the one that changed
+            
+            # Now, sync all checkboxes for this tournament to the new state
+            for prefix in key_prefixes:
+                st.session_state[f"{prefix}{t_name}"] = st.session_state.tournament_selections[t_name]
+
 
         def select_all(group, value=True):
-            # This function now updates both the central state and the individual widget states
             for t_name in group:
                 st.session_state.tournament_selections[t_name] = value
-                # Update the widget state for both tabs to keep them in sync
+                # Update all three possible widget states to keep them in sync
                 st.session_state[f"region_chk_{t_name}"] = value
-                st.session_state[f"year_chk_{t_name}"] = value
+                st.session_state[f"split_chk_{t_name}"] = value
+                st.session_state[f"league_chk_{t_name}"] = value
 
-        # --- MODIFICATION START: Global Select/Deselect All ---
+        # --- Global Select/Deselect All ---
         col1_all, col2_all = st.columns(2)
         col1_all.button("Select All Tournaments", key="select_all_global", on_click=select_all, args=(all_tournament_names, True), use_container_width=True)
         col2_all.button("Deselect All Tournaments", key="deselect_all_global", on_click=select_all, args=(all_tournament_names, False), use_container_width=True)
         st.sidebar.markdown("---")
-        # --- MODIFICATION END ---
         
-        # --- Tabs for Region and Year ---
-        region_tab, year_tab = st.tabs(["By Region", "By Year"])
+        # --- Tabs for different groupings ---
+        region_tab, split_tab, league_tab = st.tabs(["By Region", "By Split", "By League"])
 
         with region_tab:
             for region in sorted_regions:
@@ -83,32 +97,32 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{region}", on_click=select_all, args=(region_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in region_tournaments:
-                        st.checkbox(
-                            t_name, 
-                            value=st.session_state.tournament_selections[t_name], 
-                            key=f"region_chk_{t_name}", # **UNIQUE KEY**
-                            on_change=sync_checkbox_state, 
-                            args=(t_name, "region_chk") # Pass the base name and key prefix
-                        )
+                        st.checkbox(t_name, key=f"region_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
         
-        with year_tab:
-            for year in sorted_years:
-                with st.expander(f"Year {year} ({len(tournaments_by_year[year])})"):
+        with split_tab:
+            for split in sorted_splits:
+                with st.expander(f"{split} ({len(tournaments_by_split[split])})"):
                     col1, col2 = st.columns(2)
-                    year_tournaments = tournaments_by_year[year]
-                    col1.button("Select All", key=f"select_all_{year}", on_click=select_all, args=(year_tournaments, True), use_container_width=True)
-                    col2.button("Deselect All", key=f"deselect_all_{year}", on_click=select_all, args=(year_tournaments, False), use_container_width=True)
+                    split_tournaments = tournaments_by_split[split]
+                    col1.button("Select All", key=f"select_all_{split}", on_click=select_all, args=(split_tournaments, True), use_container_width=True)
+                    col2.button("Deselect All", key=f"deselect_all_{split}", on_click=select_all, args=(split_tournaments, False), use_container_width=True)
                     st.markdown("---")
-                    for t_name in year_tournaments:
-                         st.checkbox(
-                            t_name, 
-                            value=st.session_state.tournament_selections[t_name], 
-                            key=f"year_chk_{t_name}", # **UNIQUE KEY**
-                            on_change=sync_checkbox_state, 
-                            args=(t_name, "year_chk") # Pass the base name and key prefix
-                        )
+                    for t_name in split_tournaments:
+                        st.checkbox(t_name, key=f"split_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
+        
+        with league_tab:
+            for league in sorted_leagues:
+                with st.expander(f"{league} ({len(tournaments_by_league[league])})"):
+                    col1, col2 = st.columns(2)
+                    league_tournaments = tournaments_by_league[league]
+                    col1.button("Select All", key=f"select_all_{league}", on_click=select_all, args=(league_tournaments, True), use_container_width=True)
+                    col2.button("Deselect All", key=f"deselect_all_{league}", on_click=select_all, args=(league_tournaments, False), use_container_width=True)
+                    st.markdown("---")
+                    for t_name in league_tournaments:
+                        st.checkbox(t_name, key=f"league_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
 
-        # --- Data Loading and Cache Clearing Logic (remains the same) ---
+
+        # --- Data Loading and Cache Clearing Logic ---
         st.markdown("---")
         selected_tournaments = [name for name, selected in st.session_state.tournament_selections.items() if selected]
 
