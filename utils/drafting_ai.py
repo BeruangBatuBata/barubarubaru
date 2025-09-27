@@ -10,19 +10,23 @@ import math
 import io
 
 # --- MODEL LOADING (FOR PREDICTION) ---
-# The @st.cache_resource decorator has been removed from this function
+@st.cache_resource
 def load_prediction_assets(model_path='draft_predictor.json', assets_path='draft_assets.json'):
-    """Loads the trained XGBoost model and associated assets."""
+    """
+    Loads the trained model from its native JSON format and the assets from their JSON file.
+    """
     try:
+        with open(assets_path, 'r') as f:
+            assets = json.load(f)
+        
         model = xgb.XGBClassifier()
         model.load_model(model_path)
         
-        with open(assets_path, 'r') as f:
-            assets = json.load(f)
-            
-        return {'model': model, **assets}
-    except Exception as e:
-        st.error(f"Error loading prediction assets: {e}")
+        assets['model'] = model
+        return assets
+    except FileNotFoundError:
+        # This is expected if the files haven't been created yet.
+        # The app page will handle showing an informative error to the user.
         return None
 
 # --- MODEL TRAINING ---
