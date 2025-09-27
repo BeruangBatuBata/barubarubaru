@@ -11,13 +11,11 @@ st.set_page_config(layout="wide", page_title="Drafting Assistant")
 build_sidebar()
 
 # --- Helper Functions ---
-
 def generate_win_prob_bar(probability, title):
     """Generates a custom HTML two-sided probability bar."""
-    if probability is None:
-        probability = 0.5 # Default to 50/50 if no prediction
+    if probability is None: probability = 0.5
     blue_pct = probability * 100
-    red_pct = 100 - blue_pct
+    red_pct = 100 - (probability * 100)
     bar_html = f"""
     <div style="margin-bottom: 1rem;">
         <p style="margin-bottom: 0.25rem; font-size: 0.9em; color: #555; font-weight:bold;">{title}</p>
@@ -30,15 +28,14 @@ def generate_win_prob_bar(probability, title):
     st.markdown(bar_html, unsafe_allow_html=True)
 
 def update_draft(key):
-    """Generic callback to ensure widget state is saved on change."""
+    """Generic callback to trigger a rerun and save widget state."""
     pass
 
 # --- Load Model & Data ---
 model_assets = load_prediction_assets()
 if model_assets is None:
-    st.error("Could not load the prediction model. Please train a model in the 'Admin Panel' and ensure 'draft_predictor.json' and 'draft_assets.json' are in your repository's root directory.")
+    st.error("Could not load the prediction model. Please train a model in the 'Admin Panel'.")
     st.stop()
-
 if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
@@ -79,31 +76,43 @@ with st.expander("Review a Past Game"):
     for match_idx, match in enumerate(pooled_matches):
         opps = match.get('match2opponents', [])
         if len(opps) < 2: continue
-
-        team1_name, team2_name = opps[0].get('name'), opps[1].get('name')
         
-        match_date_str = match.get('date')
-        match_date = None
-        if match_date_str:
-            try:
-                match_date = datetime.fromisoformat(match_date_str.replace('Z', '+00:00')).date()
-            except (ValueError, TypeError): pass
+        team1_name_from_match, team2_name_from_match = opps[0].get('name'), opps[1].get('name')
 
-        if (selected_team1 and selected_team1 not in [team1_name, team2_name]) or \
-           (selected_team2 and selected_team2 not in [team1_name, team2_name]) or \
-           (selected_date and selected_date != match_date):
-            continue
-        if selected_team1 and selected_team2 and selected_team1 == selected_team2:
-            st.warning("Please select two different teams.")
+        if (selected_team1 and selected_team1 not in [team1_name_from_match, team2_name_from_match]) or \
+           (selected_team2 and selected_team2 not in [team1_name_from_match, team2_name_from_match]):
             continue
             
         for game_idx, game in enumerate(match.get('match2games', [])):
-            if game.get('extradata') and str(game.get('winner')) in ['1', '2']:
-                # The label shows Blue vs Red as they appeared in the match
-                label = f"{team1_name} (Blue) vs {team2_name} (Red) - Game {game_idx + 1}"
-                if match_date: label += f" - {match_date.strftime('%Y-%m-%d')}"
-                playable_games.append((label, match_idx, game_idx))
-    
+            extradata = game.get('extradata', {})
+            if extradata and str(game.get('winner')) in ['1', '2']:
+                # --- CORRECTED LOGIC FOR LABELS ---
+                team1_side = extradata.get('team1side')
+                team2_side = extradata.get('team2side')
+
+                # Determine Blue and Red teams for this specific game
+                if team1_side == 'blue':
+                    blue_team_name, red_team_name = team1_name_from_match, team2_name_from_match
+                elif team2_side == 'blue':
+                    blue_team_name, red_team_name = team2_name_from_match, team1_name_from_match
+                else: # Fallback if side data is missing, though unlikely
+                    blue_team_name, red_team_name = team1_name_from_match, team2_name_from_match
+                
+                label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+                
+                match_date_str = match.get('date')
+                if match_date_str:
+                    try:
+                        match_date = datetime.fromisoformat(match_date_str.replace('Z', '+00:00')).date()
+                        if not selected_date or selected_date == match_date:
+                            label += f" - {match_date.strftime('%Y-%m-%d')}"
+                            playable_games.append((label, match_idx, game_idx))
+                    except (ValueError, TypeError): pass
+                else:
+                     if not selected_date:
+                        playable_games.append((label, match_idx, game_idx))
+
+
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
     if st.button("Load Selected Game"):
@@ -113,19 +122,27 @@ with st.expander("Review a Past Game"):
             game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
-            # --- CORRECTED LOGIC ---
-            # The API provides opponents in order: [0] is Blue, [1] is Red.
-            # 'team1' in extradata corresponds to Blue, 'team2' corresponds to Red.
-            # This logic now correctly assigns them to the blue/red sections.
-            st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
-            st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
+            # --- CORRECTED LOGIC FOR LOADING ---
+            team1_name = match_data['match2opponents'][0].get('name')
+            team2_name = match_data['match2opponents'][1].get('name')
+            team1_side = extradata.get('team1side')
+            team2_side = extradata.get('team2side')
+
+            if team1_side == 'blue':
+                st.session_state.draft['blue_team'] = team1_name
+                st.session_state.draft['red_team'] = team2_name
+            elif team2_side == 'blue':
+                st.session_state.draft['blue_team'] = team2_name
+                st.session_state.draft['red_team'] = team1_name
+            else: # Fallback
+                st.session_state.draft['blue_team'] = team1_name
+                st.session_state.draft['red_team'] = team2_name
             
             for i in range(5):
                 st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
                 st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
                 st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
-            # --- END CORRECTED LOGIC ---
 
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
@@ -133,33 +150,16 @@ with st.expander("Review a Past Game"):
 
 st.markdown("---")
 
-# --- Main Draft Interface ---
+# --- Main Draft Interface (Code is unchanged below this line) ---
 draft = st.session_state.draft
 prob_placeholder, turn_placeholder, analysis_placeholder, suggestion_placeholder = st.empty(), st.empty(), st.empty(), st.empty()
-
 c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
 
-st.session_state.draft['blue_team'] = c1.selectbox(
-    "Blue Team:", 
-    ALL_TEAMS, 
-    key='blue_team_select', 
-    index=ALL_TEAMS.index(st.session_state.draft['blue_team']) if st.session_state.draft['blue_team'] in ALL_TEAMS else 0,
-    on_change=update_draft, 
-    args=('blue_team_select',)
-)
-st.session_state.draft['red_team'] = c2.selectbox(
-    "Red Team:", 
-    ALL_TEAMS, 
-    key='red_team_select', 
-    index=ALL_TEAMS.index(st.session_state.draft['red_team']) if st.session_state.draft['red_team'] in ALL_TEAMS else 0,
-    on_change=update_draft, 
-    args=('red_team_select',)
-)
-
+st.session_state.draft['blue_team'] = c1.selectbox("Blue Team:", ALL_TEAMS, key='blue_team_select', index=ALL_TEAMS.index(st.session_state.draft['blue_team']) if st.session_state.draft['blue_team'] in ALL_TEAMS else 0, on_change=update_draft, args=('blue_team_select',))
+st.session_state.draft['red_team'] = c2.selectbox("Red Team:", ALL_TEAMS, key='red_team_select', index=ALL_TEAMS.index(st.session_state.draft['red_team']) if st.session_state.draft['red_team'] in ALL_TEAMS else 0, on_change=update_draft, args=('red_team_select',))
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
 
 if c4.button("Clear Draft"):
-    # Store the currently selected teams
     blue_team_on_clear = st.session_state.draft['blue_team']
     red_team_on_clear = st.session_state.draft['red_team']
     st.session_state.draft = {
@@ -202,12 +202,10 @@ with red_col:
         key = f"r_pick_{role}"
         draft['red_picks'][role] = st.selectbox(role, available, key=key, index=available.index(draft['red_picks'][role]) if draft['red_picks'][role] in available else 0, on_change=update_draft, args=(key,))
 
-# --- Calculations & Predictions ---
 blue_p = {k: v for k, v in draft['blue_picks'].items() if v}
 red_p = {k: v for k, v in draft['red_picks'].items() if v}
 blue_b = [v for v in draft['blue_bans'] if v]
 red_b = [v for v in draft['red_bans'] if v]
-
 prob_overall, prob_draft_only = predict_draft_outcome(blue_p, red_p, blue_b, red_b, draft['blue_team'], draft['red_team'], model_assets, HERO_PROFILES)
 explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
 
@@ -215,15 +213,12 @@ with prob_placeholder.container():
     st.subheader("Live Win Probability")
     generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
-    
     series_probs = calculate_series_score_probs(prob_overall, series_format, draft['blue_team'], draft['red_team'])
-    
     if series_probs:
         st.write(f"**Best-of-{series_format} Series Score Probability**")
         sorted_probs = sorted(series_probs.items(), key=lambda item: item[1], reverse=True)
         prob_text = ""
-        for score, probability in sorted_probs:
-            prob_text += f"- **{score}:** {probability:.1%}\n"
+        for score, probability in sorted_probs: prob_text += f"- **{score}:** {probability:.1%}\n"
         st.markdown(prob_text)
 
 with analysis_placeholder.container():
@@ -232,7 +227,6 @@ with analysis_placeholder.container():
     with c1: st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
     with c2: st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
 
-# --- Turn Logic & Suggestions ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
 turn, phase = None, "DRAFT COMPLETE"
 if total_bans < 6: phase, turn = "BAN", ['B', 'R', 'B', 'R', 'B', 'R'][total_bans]
@@ -243,7 +237,6 @@ elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 
 if turn == 'B': team_turn = draft.get('blue_team') or "Blue Team"
 elif turn == 'R': team_turn = draft.get('red_team') or "Red Team"
 else: team_turn = "Draft Complete"
-
 turn_phase_text = phase if phase != "DRAFT COMPLETE" else ""
 turn_placeholder.header(f"Turn: {team_turn} ({turn_phase_text})" if team_turn != "Draft Complete" else f"{team_turn}")
 
