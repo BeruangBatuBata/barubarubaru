@@ -131,20 +131,16 @@ with st.expander("Review a Past Game"):
             for i in range(5):
                 st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
-
-                # --- MODIFIED SECTION ---
-                # Blue Team
+                
                 hero_blue = extradata.get(f'team1champion{i+1}')
                 if hero_blue and hero_blue not in ALL_HEROES:
                     st.warning(f"'{hero_blue}' is not a recognized hero in your draft_assets.json file. Please update it.")
                 st.session_state.draft['blue_picks'][ROLES[i]] = hero_blue
 
-                # Red Team
                 hero_red = extradata.get(f'team2champion{i+1}')
                 if hero_red and hero_red not in ALL_HEROES:
                     st.warning(f"'{hero_red}' is not a recognized hero in your draft_assets.json file. Please update it.")
                 st.session_state.draft['red_picks'][ROLES[i]] = hero_red
-                # --- END MODIFIED SECTION ---
 
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
@@ -205,11 +201,21 @@ with prob_placeholder.container():
     generate_win_prob_bar(prob_overall, "Overall Prediction (Draft + Team History)")
     generate_win_prob_bar(prob_draft_only, "Draft-Only Prediction (Team Neutral)")
     
-    series_probs = calculate_series_score_probs(prob_overall, series_format)
+    # --- MODIFIED SECTION ---
+    series_probs = calculate_series_score_probs(
+        prob_overall, 
+        series_format,
+        draft['blue_team'],
+        draft['red_team']
+    )
+    # --- END MODIFIED SECTION ---
+    
     if series_probs:
         st.write(f"**Best-of-{series_format} Series Score Probability**")
+        # Sort probabilities from most likely to least likely
+        sorted_probs = sorted(series_probs.items(), key=lambda item: item[1], reverse=True)
         prob_text = ""
-        for score, probability in series_probs.items():
+        for score, probability in sorted_probs:
             prob_text += f"- **{score}:** {probability:.1%}\n"
         st.markdown(prob_text)
 
