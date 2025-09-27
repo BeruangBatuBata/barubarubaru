@@ -272,10 +272,18 @@ with st.expander("Review a Past Game"):
         extradata = game_data['extradata']
         
         # --- MODIFICATION START ---
-        # Update both the main state and the widget's key state
-        blue_team_name = match_data['match2opponents'][0].get('name', '').strip()
-        red_team_name = match_data['match2opponents'][1].get('name', '').strip()
+        # Correctly assign teams based on side data from the API
+        team1_name = match_data['match2opponents'][0].get('name', '').strip()
+        team2_name = match_data['match2opponents'][1].get('name', '').strip()
+        team1_side = extradata.get('team1side', 'blue') # Default to blue if not specified
 
+        if team1_side == 'blue':
+            blue_team_name = team1_name
+            red_team_name = team2_name
+        else: # team1_side is 'red'
+            blue_team_name = team2_name
+            red_team_name = team1_name
+            
         st.session_state.draft['blue_team'] = blue_team_name
         st.session_state.draft['red_team'] = red_team_name
         st.session_state.blue_team_select = blue_team_name
@@ -416,7 +424,6 @@ with red_col:
 
 # Add a reset draft button
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
-    # --- MODIFICATION START ---
     # When resetting, clear the widget keys too
     st.session_state.blue_team_select = None
     st.session_state.red_team_select = None
@@ -428,7 +435,6 @@ if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
     }
-    # --- MODIFICATION END ---
     st.session_state.selected_past_game = None
     st.rerun()
     
