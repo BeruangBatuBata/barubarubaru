@@ -84,10 +84,12 @@ else:
         if highest_wr is not None:
             c3.metric(f"Highest Win Rate (>{min_games} games)", highest_wr['Hero'], f"{highest_wr['Win Rate (%)']:.1f}%")
 
-        # --- MODIFICATION START: Reverted to original st.bar_chart ---
+        # --- MODIFICATION START: Use st.bar_chart with explicit x and y to preserve sort order ---
         st.subheader("Top 10 Most Present Heroes (Pick % + Ban %)")
         df_presence = df_stats.sort_values("Presence (%)", ascending=False).head(10)
-        st.bar_chart(df_presence.set_index('Hero')[['Pick Rate (%)', 'Ban Rate (%)']])
+        
+        # By setting 'x' and 'y' explicitly, st.bar_chart will respect the DataFrame's sort order
+        st.bar_chart(df_presence, x='Hero', y=['Pick Rate (%)', 'Ban Rate (%)'])
         # --- MODIFICATION END ---
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
