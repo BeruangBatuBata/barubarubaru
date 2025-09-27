@@ -64,40 +64,44 @@ with st.expander("Review a Past Game"):
     selected_team2 = col2.selectbox("Filter by Team 2:", [None] + all_teams_for_filter, key="filter_team2")
     selected_date = col3.date_input("Filter by Date:", None, key="filter_date")
 
+    # --- REWRITTEN LOGIC FOR FILTERING AND DISPLAYING GAMES ---
     playable_games = []
     for match_idx, match in enumerate(pooled_matches):
-        match_date_str = match.get('date')
-        match_date = None
-        if match_date_str:
-            try:
-                match_date = datetime.fromisoformat(match_date_str.replace('Z', '+00:00')).date()
-            except (ValueError, TypeError): pass
-        
-        if selected_date and selected_date != match_date:
-            continue
-
         for game_idx, game in enumerate(match.get('match2games', [])):
-            if game.get('extradata') and str(game.get('winner')) in ['1', '2']:
-                game_opps = game.get('opponents', [])
-                if len(game_opps) < 2: continue
-                
-                # --- CORRECTED LOGIC: Get sides from game-specific data ---
-                blue_team_name = game_opps[0].get('name')
-                red_team_name = game_opps[1].get('name')
+            # 1. Check if game data is valid
+            if not (game.get('extradata') and str(game.get('winner')) in ['1', '2']):
+                continue
+            game_opps = game.get('opponents', [])
+            if len(game_opps) < 2:
+                continue
 
-                # Apply team filters
-                if (selected_team1 and selected_team1 not in [blue_team_name, red_team_name]) or \
-                   (selected_team2 and selected_team2 not in [blue_team_name, red_team_name]):
-                    continue
-                if selected_team1 and selected_team2 and selected_team1 == selected_team2:
-                    continue
-                
-                label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
-                if match_date: label += f" - {match_date.strftime('%Y-%m-%d')}"
-                playable_games.append((label, match_idx, game_idx))
+            # 2. Get game-specific info
+            blue_team_name = game_opps[0].get('name')
+            red_team_name = game_opps[1].get('name')
+            
+            match_date = None
+            if match.get('date'):
+                try:
+                    match_date = datetime.fromisoformat(match['date'].replace('Z', '+00:00')).date()
+                except (ValueError, TypeError): pass
+
+            # 3. Apply all filters
+            if selected_team1 and selected_team1 not in [blue_team_name, red_team_name]:
+                continue
+            if selected_team2 and selected_team2 not in [blue_team_name, red_team_name]:
+                continue
+            if selected_date and selected_date != match_date:
+                continue
+
+            # 4. If all checks pass, create label and add to list
+            label = f"{blue_team_name} (Blue) vs {red_team_name} (Red) - Game {game_idx + 1}"
+            if match_date:
+                label += f" - {match_date.strftime('%Y-%m-%d')}"
+            playable_games.append((label, match_idx, game_idx))
 
     if selected_team1 and selected_team2 and selected_team1 == selected_team2:
         st.warning("Please select two different teams.")
+        playable_games = [] # Clear the list if the same team is selected
 
     selected_game = st.selectbox("Select a past game to analyze:", [None] + playable_games, format_func=lambda x: x[0] if x else "None", key="game_selector")
 
@@ -108,13 +112,11 @@ with st.expander("Review a Past Game"):
             game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
-            # --- CORRECTED LOGIC: Load draft based on game-specific sides ---
             game_opps = game_data.get('opponents', [])
             if len(game_opps) >= 2:
                 st.session_state.draft['blue_team'] = game_opps[0].get('name')
                 st.session_state.draft['red_team'] = game_opps[1].get('name')
             
-                # Data in extradata (team1, team2) corresponds to the order in game['opponents']
                 for i in range(5):
                     st.session_state.draft['blue_bans'][i] = extradata.get(f'team1ban{i+1}')
                     st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
