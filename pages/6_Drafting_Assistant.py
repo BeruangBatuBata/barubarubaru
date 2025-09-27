@@ -56,9 +56,19 @@ if 'draft' not in st.session_state:
 st.title("🎯 Professional Drafting Assistant")
 
 with st.expander("Review a Past Game"):
-    # Filters
-    all_teams_for_filter = sorted([team for team in ALL_TEAMS if team is not None])
+    # Get a list of teams that have actually competed
+    competing_teams = set()
+    for match in pooled_matches:
+        opps = match.get('match2opponents', [])
+        if len(opps) >= 2:
+            if opps[0].get('name'):
+                competing_teams.add(opps[0].get('name'))
+            if opps[1].get('name'):
+                competing_teams.add(opps[1].get('name'))
     
+    all_teams_for_filter = sorted(list(competing_teams))
+
+    # Filters
     col1, col2, col3 = st.columns(3)
     with col1:
         selected_team1 = st.selectbox("Filter by Team 1:", [None] + all_teams_for_filter, key="filter_team1")
@@ -99,7 +109,8 @@ with st.expander("Review a Past Game"):
             continue
             
         for game_idx, game in enumerate(match.get('match2games', [])):
-            if game.get('extradata'):
+            # Only show games that have a winner (i.e., have been completed)
+            if game.get('extradata') and game.get('winner') is not None:
                 label = f"{team1_name} vs {team2_name} (Game {game_idx + 1})"
                 if match_date:
                     label += f" - {match_date.strftime('%Y-%m-%d')}"
