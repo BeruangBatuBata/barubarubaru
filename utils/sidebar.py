@@ -55,9 +55,15 @@ def build_sidebar():
             # It updates the central dictionary with the new value from the specific widget.
             st.session_state.tournament_selections[t_name] = st.session_state[f"{key_prefix}_{t_name}"]
 
+        # --- MODIFICATION START ---
         def select_all(group, value=True):
+            # This function now updates both the central state and the individual widget states
             for t_name in group:
                 st.session_state.tournament_selections[t_name] = value
+                # Update the widget state for both tabs to keep them in sync
+                st.session_state[f"region_chk_{t_name}"] = value
+                st.session_state[f"year_chk_{t_name}"] = value
+        # --- MODIFICATION END ---
         
         # --- Tabs for Region and Year ---
         region_tab, year_tab = st.tabs(["By Region", "By Year"])
