@@ -30,9 +30,7 @@ def generate_win_prob_bar(probability, title):
     st.markdown(bar_html, unsafe_allow_html=True)
 
 def update_draft(key):
-    """Generic callback to update the draft state."""
-    # This dummy function just ensures that Streamlit
-    # saves the widget's state on any change.
+    """Generic callback to ensure widget state is saved on change."""
     pass
 
 # --- Load Model & Data ---
@@ -101,7 +99,8 @@ with st.expander("Review a Past Game"):
             
         for game_idx, game in enumerate(match.get('match2games', [])):
             if game.get('extradata') and str(game.get('winner')) in ['1', '2']:
-                label = f"{team1_name} vs {team2_name} (Game {game_idx + 1})"
+                # The label shows Blue vs Red as they appeared in the match
+                label = f"{team1_name} (Blue) vs {team2_name} (Red) - Game {game_idx + 1}"
                 if match_date: label += f" - {match_date.strftime('%Y-%m-%d')}"
                 playable_games.append((label, match_idx, game_idx))
     
@@ -114,6 +113,10 @@ with st.expander("Review a Past Game"):
             game_data = match_data['match2games'][game_idx]
             extradata = game_data['extradata']
             
+            # --- CORRECTED LOGIC ---
+            # The API provides opponents in order: [0] is Blue, [1] is Red.
+            # 'team1' in extradata corresponds to Blue, 'team2' corresponds to Red.
+            # This logic now correctly assigns them to the blue/red sections.
             st.session_state.draft['blue_team'] = match_data['match2opponents'][0].get('name')
             st.session_state.draft['red_team'] = match_data['match2opponents'][1].get('name')
             
@@ -122,6 +125,7 @@ with st.expander("Review a Past Game"):
                 st.session_state.draft['red_bans'][i] = extradata.get(f'team2ban{i+1}')
                 st.session_state.draft['blue_picks'][ROLES[i]] = extradata.get(f'team1champion{i+1}')
                 st.session_state.draft['red_picks'][ROLES[i]] = extradata.get(f'team2champion{i+1}')
+            # --- END CORRECTED LOGIC ---
 
             winner = "Blue Team" if str(game_data.get('winner')) == '1' else "Red Team"
             st.success(f"**Actual Winner:** {winner}")
@@ -135,30 +139,31 @@ prob_placeholder, turn_placeholder, analysis_placeholder, suggestion_placeholder
 
 c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
 
-# --- MODIFIED SECTION ---
-draft['blue_team'] = c1.selectbox(
+st.session_state.draft['blue_team'] = c1.selectbox(
     "Blue Team:", 
     ALL_TEAMS, 
     key='blue_team_select', 
-    index=ALL_TEAMS.index(draft['blue_team']) if draft['blue_team'] in ALL_TEAMS else 0,
+    index=ALL_TEAMS.index(st.session_state.draft['blue_team']) if st.session_state.draft['blue_team'] in ALL_TEAMS else 0,
     on_change=update_draft, 
     args=('blue_team_select',)
 )
-draft['red_team'] = c2.selectbox(
+st.session_state.draft['red_team'] = c2.selectbox(
     "Red Team:", 
     ALL_TEAMS, 
     key='red_team_select', 
-    index=ALL_TEAMS.index(draft['red_team']) if draft['red_team'] in ALL_TEAMS else 0,
+    index=ALL_TEAMS.index(st.session_state.draft['red_team']) if st.session_state.draft['red_team'] in ALL_TEAMS else 0,
     on_change=update_draft, 
     args=('red_team_select',)
 )
-# --- END MODIFIED SECTION ---
 
 series_format = c3.selectbox("Series Format:", [1, 3, 5, 7], index=1)
 
 if c4.button("Clear Draft"):
+    # Store the currently selected teams
+    blue_team_on_clear = st.session_state.draft['blue_team']
+    red_team_on_clear = st.session_state.draft['red_team']
     st.session_state.draft = {
-        'blue_team': None, 'red_team': None,
+        'blue_team': blue_team_on_clear, 'red_team': red_team_on_clear,
         'blue_bans': [None]*5, 'red_bans': [None]*5,
         'blue_picks': {role: None for role in ROLES},
         'red_picks': {role: None for role in ROLES}
