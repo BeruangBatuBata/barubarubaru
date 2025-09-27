@@ -490,7 +490,7 @@ with red_col:
             index=available.index(current_pick) if current_pick in available else 0,
         )
 
-# --- Turn Logic & Suggestions ---
+# --- Turn Logic ---
 total_bans, total_picks = len(blue_b) + len(red_b), len(blue_p) + len(red_p)
 turn, phase = None, "DRAFT COMPLETE"
 if total_bans < 6: phase, turn = "BAN", ['B', 'R', 'B', 'R', 'B', 'R'][total_bans]
@@ -501,6 +501,19 @@ elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 
 st.markdown("---")
 
 # --- MODIFICATION START ---
+# Moved Reset button here
+if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
+    st.session_state.draft = {
+        'blue_team': None, 
+        'red_team': None,
+        'blue_bans': [None]*5, 
+        'red_bans': [None]*5,
+        'blue_picks': {role: None for role in ROLES},
+        'red_picks': {role: None for role in ROLES}
+    }
+    st.session_state.selected_past_game = None
+    st.rerun()
+
 # AI Suggestions and Turn display at the bottom, behind a toggle
 st.toggle("Show AI Suggestions", key='show_ai_suggestions', value=False)
 turn_placeholder = st.empty()
@@ -543,19 +556,4 @@ if st.session_state.get('show_ai_suggestions', False):
     else:
         turn_placeholder.header("📋 Draft Complete")
         st.info("Draft is complete, no suggestions to show.")
-
 # --- MODIFICATION END ---
-
-
-# Add a reset draft button at the very end
-if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
-    st.session_state.draft = {
-        'blue_team': None, 
-        'red_team': None,
-        'blue_bans': [None]*5, 
-        'red_bans': [None]*5,
-        'blue_picks': {role: None for role in ROLES},
-        'red_picks': {role: None for role in ROLES}
-    }
-    st.session_state.selected_past_game = None
-    st.rerun()
