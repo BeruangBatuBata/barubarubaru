@@ -410,14 +410,23 @@ with prob_placeholder.container():
             st.markdown("---")
             st.markdown(f"**Series Win Probability:** {blue_team_name} **{blue_series_win_prob:.1%}** vs {red_team_name} **{red_series_win_prob:.1%}**")
 
+# --- MODIFICATION START ---
+# Moved AI Draft Analysis back to its original position
 with analysis_placeholder.container():
     st.subheader("AI Draft Analysis")
     c1, c2 = st.columns(2)
-    explanation = generate_prediction_explanation(list(draft['blue_picks'].values()), list(draft['red_picks'].values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
-    with c1:
-        st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
-    with c2:
-        st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
+    explanation = generate_prediction_explanation(list(blue_p.values()), list(red_p.values()), HERO_PROFILES, HERO_DAMAGE_TYPE)
+    
+    # Only show analysis if picks have been made
+    if blue_p:
+        with c1:
+            st.markdown(f"**Analysis for {blue_team_name}**")
+            st.markdown("".join([f"- {s}\n" for s in explanation['blue']]))
+    if red_p:
+        with c2:
+            st.markdown(f"**Analysis for {red_team_name}**")
+            st.markdown("".join([f"- {s}\n" for s in explanation['red']]))
+# --- MODIFICATION END ---
 
 
 blue_col, red_col = st.columns(2)
@@ -500,7 +509,6 @@ elif total_picks < 10: phase, turn = "PICK", ['R', 'B', 'B', 'R'][total_picks - 
 
 st.markdown("---")
 
-# --- MODIFICATION START ---
 # Moved Reset button here
 if st.button("🔄 Reset Draft", help="Clear all picks and bans"):
     st.session_state.draft = {
@@ -556,4 +564,3 @@ if st.session_state.get('show_ai_suggestions', False):
     else:
         turn_placeholder.header("📋 Draft Complete")
         st.info("Draft is complete, no suggestions to show.")
-# --- MODIFICATION END ---
