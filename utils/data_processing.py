@@ -239,72 +239,28 @@ def get_stage_info(pagename, section):
 # --- MODIFICATION END ---
 
 def parse_matches(matches_raw):
-    out=[]
+    """
+    Parses and enriches the raw match data from the API.
+    It adds stage information without flattening the data structure.
+    """
+    enriched_matches = []
     for m in matches_raw:
-        if isinstance(m, str):
-            try:
-                m = json.loads(m)
-            except:
-                continue
         if not isinstance(m, dict):
             continue
+        
+        # Normalize team names directly in the opponents list
+        if "match2opponents" in m:
+            for opp in m["match2opponents"]:
+                opp["name"] = normalize_team(opp.get("name"))
 
-        if "opponents" in m and not "match2opponents" in m:
-            opps = m.get("opponents", [])
-            if len(opps) != 2: continue
-            teamA = opps[0].get("name", "") if isinstance(opps[0], dict) else str(opps[0])
-            teamB = opps[1].get("name", "") if isinstance(opps[1], dict) else str(opps[1])
-            games = m.get("games", [])
-            scoreA = sum(1 for g in games if str(g.get("winner", "")) == "1")
-            scoreB = sum(1 for g in games if str(g.get("winner", "")) == "2")
-            if scoreA > scoreB:
-                winner = "1"
-            elif scoreB > scoreA:
-                winner = "2"
-            else:
-                winner = ""
-
-        elif "match2opponents" in m:
-            opps = m.get("match2opponents", [])
-            if len(opps) != 2: continue
-            teamA = opps[0].get("name", "")
-            teamB = opps[1].get("name", "")
-            scoreA = int(opps[0].get("score", 0))
-            scoreB = int(opps[1].get("score", 0))
-            winner = str(m.get("winner", ""))
-        else:
-            continue
-
-        if not teamA or not teamB:
-            continue
-
-        dt = pd.to_datetime(m.get("date") or m.get("datetime") or m.get("timestamp"), errors="coerce")
-        if pd.isnull(dt): continue
-
-        bestof = int(m.get("bestof", 3))
         pagename = m.get("pagename", "")
         section = m.get("section", "")
-
-        # --- MODIFICATION START: Call the new stage function ---
+        
+        # Add stage info to the top level of the match dictionary
         stage_type, stage_priority = get_stage_info(pagename, section)
-        # --- MODIFICATION END ---
+        m['stage_type'] = stage_type
+        m['stage_priority'] = stage_priority
+        
+        enriched_matches.append(m)
 
-        out.append({
-            "date": dt.date(),
-            "teamA": normalize_team(teamA),
-            "teamB": normalize_team(teamB),
-            "bestof": bestof,
-            "winner": winner,
-            "scoreA": scoreA,
-            "scoreB": scoreB,
-            "pagename": pagename,
-            "tournament": m.get("tournament", ""),
-            "section": section,
-            "match_id": m.get("match2id", m.get("matchid", "")),
-            # --- MODIFICATION START: Add new fields to the data ---
-            "stage_type": stage_type,
-            "stage_priority": stage_priority
-            # --- MODIFICATION END ---
-        })
-
-    return sorted(out, key=lambda x:x["date"])
+    return enriched_matches
