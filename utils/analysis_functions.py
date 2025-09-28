@@ -13,8 +13,12 @@ def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
         "red_picks": 0, "red_wins": 0
     })
 
-    # Calculate total games from the provided match list
-    total_games = sum(len(m.get("match2games", [])) for m in matches_to_analyze if any(g.get("winner") for g in m.get("match2games", [])))
+    # Calculate total games from the provided, potentially filtered, match list
+    total_games = 0
+    for match in matches_to_analyze:
+        for game in match.get("match2games", []):
+            if game.get("winner"):
+                total_games += 1
 
     if total_games == 0:
         return pd.DataFrame()
@@ -22,10 +26,6 @@ def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
     for match in matches_to_analyze:
         match_teams = [opp.get('name', '') for opp in match.get("match2opponents", [])]
         
-        # Skip if the match is not relevant to the team filter
-        if team_filter != "All Teams" and team_filter not in match_teams:
-            continue
-
         for game in match.get("match2games", []):
             winner = game.get("winner")
             opponents = game.get("opponents")
@@ -57,14 +57,17 @@ def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
                                 stats_data[hero]["red_picks"] += 1
                                 if is_win: stats_data[hero]["red_wins"] += 1
 
-            # Process bans
+            # Process bans for the whole game
+            game_bans = set()
             for i in range(1, 6):
-                if is_team1_in_filter:
-                    banned_hero_1 = extradata.get(f'team1ban{i}')
-                    if banned_hero_1: stats_data[banned_hero_1]["bans"] += 1
-                if is_team2_in_filter:
-                    banned_hero_2 = extradata.get(f'team2ban{i}')
-                    if banned_hero_2: stats_data[banned_hero_2]["bans"] += 1
+                ban1 = extradata.get(f'team1ban{i}')
+                ban2 = extradata.get(f'team2ban{i}')
+                if ban1: game_bans.add(ban1)
+                if ban2: game_bans.add(ban2)
+            
+            for hero in game_bans:
+                stats_data[hero]["bans"] += 1
+
 
     df_rows = []
     for hero, stats in stats_data.items():
@@ -86,9 +89,9 @@ def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
     return pd.DataFrame(df_rows)
 
 
-def process_hero_drilldown_data(pooled_matches):
+def process_hero_drilldown_data(matches_to_analyze):
     hero_stats_map, all_heroes, hero_pick_rows = {}, set(), []
-    for match in pooled_matches:
+    for match in matches_to_analyze:
         t1, t2 = "", ""
         opps = match.get('match2opponents', [])
         if len(opps) >= 2:
@@ -121,23 +124,18 @@ def process_hero_drilldown_data(pooled_matches):
         hero_stats_map[hero] = {"per_team_df": pd.DataFrame(team_stats_rows).sort_values("Games", ascending=False), "matchups_df": pd.DataFrame(matchup_rows)}
     return sorted(list(all_heroes)), hero_stats_map
 
-# --- MODIFICATION START ---
-# This function is now expanded to handle overall stats as well.
-def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
-    # H2H specific stats
+def process_head_to_head_teams(t1_norm, t2_norm, matches_to_analyze):
     win_counts = {t1_norm: 0, t2_norm: 0}
     t1_h2h_heroes, t2_h2h_heroes = Counter(), Counter()
     t1_h2h_bans, t2_h2h_bans = Counter(), Counter()
     total_games = 0
 
-    # Overall stats for each team
     t1_overall_heroes, t2_overall_heroes = Counter(), Counter()
     t1_overall_bans, t2_overall_bans = Counter(), Counter()
 
-    for match in pooled_matches:
-        opps = [x.get("name", "").strip() for x in match.get("match2opponents", [])]
+    for match in matches_to_analyze:
+        opps = [opp.get("name", "") for opp in match.get("match2opponents", [])]
         
-        # --- Overall Stats Calculation ---
         if t1_norm in opps or t2_norm in opps:
             try:
                 team_idx = opps.index(t1_norm) if t1_norm in opps else opps.index(t2_norm)
@@ -157,7 +155,6 @@ def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
                     if ban_hero:
                         (t1_overall_bans if current_team == t1_norm else t2_overall_bans).update([ban_hero])
 
-        # --- H2H Stats Calculation (existing logic) ---
         if {t1_norm, t2_norm}.issubset(set(opps)):
             try:
                 idx1 = opps.index(t1_norm)
@@ -191,12 +188,10 @@ def process_head_to_head_teams(t1_norm, t2_norm, pooled_matches):
         "t1_overall_bans_df": pd.DataFrame(t1_overall_bans.most_common(8), columns=['Hero', 'Bans']),
         "t2_overall_bans_df": pd.DataFrame(t2_overall_bans.most_common(8), columns=['Hero', 'Bans'])
     }
-# --- MODIFICATION END ---
 
-
-def process_head_to_head_heroes(h1, h2, pooled_matches):
+def process_head_to_head_heroes(h1, h2, matches_to_analyze):
     games_with_both, win_h1, win_h2 = 0, 0, 0
-    for match in pooled_matches:
+    for match in matches_to_analyze:
         for game in match.get("match2games", []):
             opp_heroes = [ {p["champion"] for p in o.get("players", []) if isinstance(p, dict) and "champion" in p} for o in game.get("opponents", []) ]
             if len(opp_heroes) != 2: continue
