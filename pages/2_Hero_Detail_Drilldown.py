@@ -12,7 +12,7 @@ if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matc
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
 
-# --- MODIFICATION START: Conditional Stage Filter ---
+# --- MODIFICATION START: Correctly implement conditional stage filtering ---
 matches_to_analyze = st.session_state['parsed_matches']
 selected_stage = "All Stages"
 
@@ -26,7 +26,7 @@ if len(st.session_state.get('selected_tournaments', [])) == 1:
     if unique_stages:
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
 
-# Filter the matches based on the selection
+# Filter the matches based on the selection BEFORE they are passed to the cached function
 if selected_stage != "All Stages":
     matches_to_analyze = [m for m in matches_to_analyze if m.get('stage_type') == selected_stage]
 # --- MODIFICATION END ---
@@ -34,10 +34,11 @@ if selected_stage != "All Stages":
 
 # Cache the expensive data processing step
 @st.cache_data
-def get_drilldown_data(_matches_to_analyze):
-    return process_hero_drilldown_data(_matches_to_analyze)
+def get_drilldown_data(_matches):
+    """This function now receives the pre-filtered list of matches."""
+    return process_hero_drilldown_data(_matches)
 
-# Load data from cache using the (potentially filtered) match list
+# Load data from cache using the (now correctly filtered) match list
 all_heroes, hero_stats_map = get_drilldown_data(tuple(matches_to_analyze))
 
 
@@ -46,6 +47,8 @@ selected_hero = st.selectbox(
     options=all_heroes,
     index=0
 )
+
+st.info(f"Displaying hero details for stage: **{selected_stage}**")
 
 if selected_hero and selected_hero in hero_stats_map:
     st.header(f"Performance for {selected_hero}")
@@ -60,7 +63,7 @@ if selected_hero and selected_hero in hero_stats_map:
         df_team_display.index += 1
         st.dataframe(df_team_display, use_container_width=True)
     else:
-        st.info(f"No data available for {selected_hero} being played by any specific team.")
+        st.info(f"No data available for {selected_hero} being played by any specific team in this stage.")
 
     st.subheader("Performance Against Opposing Heroes")
     if not df_matchups.empty:
@@ -68,6 +71,6 @@ if selected_hero and selected_hero in hero_stats_map:
         df_matchups_display.index += 1
         st.dataframe(df_matchups_display, use_container_width=True)
     else:
-        st.info(f"No specific matchup data found for {selected_hero}.")
+        st.info(f"No specific matchup data found for {selected_hero} in this stage.")
 else:
-    st.error("Selected hero not found in the data.")
+    st.error("Selected hero not found in the data for this stage.")
