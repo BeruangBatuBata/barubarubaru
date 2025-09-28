@@ -58,7 +58,8 @@ st.info(f"Displaying hero statistics for **{selected_team}** in the selected tou
 with st.spinner(f"Calculating stats for {selected_team}..."):
     # Pass the correctly filtered list of matches to the analysis function
     df_stats = get_stats_df(tuple(filtered_matches), selected_team)
-
+st.info(f"Displaying hero statistics for **{selected_team}** during stage: **{selected_stage}**.")
+st.write(f"Number of matches being analyzed: **{len(filtered_matches)}**")
 if df_stats.empty:
     st.warning(f"No match data found for '{selected_team}' in the selected tournaments or stage.")
 else:
