@@ -8,79 +8,120 @@ import os
 st.set_page_config(layout="wide", page_title="Admin Panel")
 build_sidebar()
 
-# --- Page Content ---
+# --- Authentication Logic ---
+
+def check_password():
+    """Returns `True` if the user had a correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        # IMPORTANT: In a real-world application, use st.secrets for secure credential management.
+        # This is a demonstration using hardcoded values.
+        if (
+            st.session_state["username"] in ["admin", "beruang"]
+            and st.session_state["password"] == "batu"
+        ):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # don't store password
+            del st.session_state["username"]
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show inputs for username + password.
+        st.text_input("Username", on_change=password_entered, key="username")
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password not correct, show input + error.
+        st.text_input("Username", on_change=password_entered, key="username")
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 User not known or password incorrect")
+        return False
+    else:
+        # Password correct.
+        return True
+
+# --- Main Page Content ---
+
 st.title("👑 Admin Panel")
-st.warning("Training a new model can take several minutes and will replace the existing AI model.", icon="⚠️")
 
-st.header("AI Model Training")
-st.info("Use this tool to re-train the Drafting Assistant's AI model using the tournament data currently loaded in the application.")
+if check_password():
+    st.success("Login successful!")
+    st.warning("Training a new model can take several minutes and will replace the existing AI model.", icon="⚠️")
 
-# --- Initialize state for download functionality ---
-if 'model_path_to_download' not in st.session_state:
-    st.session_state.model_path_to_download = None
-if 'assets_path_to_download' not in st.session_state:
-    st.session_state.assets_path_to_download = None
+    st.header("AI Model Training")
+    st.info("Use this tool to re-train the Drafting Assistant's AI model using the tournament data currently loaded in the application.")
 
-# --- Check if data is loaded and display the training button ---
-if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
-    st.error("No tournament data loaded. Please go to the Overview page, select tournaments, and click 'Load Data' before training.")
-else:
-    st.success(f"**{len(st.session_state['pooled_matches'])}** matches are loaded and ready for training.")
-    
-    if st.button("Train New AI Model", type="primary"):
-        # Reset previous download links
+    # --- Initialize state for download functionality ---
+    if 'model_path_to_download' not in st.session_state:
         st.session_state.model_path_to_download = None
+    if 'assets_path_to_download' not in st.session_state:
         st.session_state.assets_path_to_download = None
-        
+
+    # --- Check if data is loaded and display the training button ---
+    if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
+        st.error("No tournament data loaded. Please go to the Overview page, select tournaments, and click 'Load Data' before training.")
+    else:
+        st.success(f"**{len(st.session_state['pooled_matches'])}** matches are loaded and ready for training.")
+
+        if st.button("Train New AI Model", type="primary"):
+            # Reset previous download links
+            st.session_state.model_path_to_download = None
+            st.session_state.assets_path_to_download = None
+
+            try:
+                with st.spinner("Training AI model and saving files to server... This may take a minute."):
+                    model_filepath = "draft_predictor.json"
+                    assets_filepath = "draft_assets.json"
+
+                    # This function saves the files directly to the server's disk
+                    feedback = train_and_save_prediction_model(
+                        st.session_state['pooled_matches'],
+                        HERO_PROFILES,
+                        model_filename=model_filepath,
+                        assets_filename=assets_filepath
+                    )
+
+                    # Store the file paths to make them available for download
+                    st.session_state.model_path_to_download = model_filepath
+                    st.session_state.assets_path_to_download = assets_filepath
+
+                st.success(feedback)
+            except Exception as e:
+                st.error(f"An error occurred during training: {e}")
+
+    # --- Display Download Buttons after files have been created ---
+    if st.session_state.model_path_to_download and st.session_state.assets_path_to_download:
+        st.markdown("---")
+        st.subheader("Download Your New Model Files")
+        st.info("Download both files, upload them to your GitHub repository, then reboot the app to apply the changes.")
+
         try:
-            with st.spinner("Training AI model and saving files to server... This may take a minute."):
-                model_filepath = "draft_predictor.json"
-                assets_filepath = "draft_assets.json"
-                
-                # This function saves the files directly to the server's disk
-                feedback = train_and_save_prediction_model(
-                    st.session_state['pooled_matches'],
-                    HERO_PROFILES,
-                    model_filename=model_filepath,
-                    assets_filename=assets_filepath
+            # Read the newly created files back from the server's disk
+            with open(st.session_state.model_path_to_download, "rb") as fp:
+                model_data = fp.read()
+            with open(st.session_state.assets_path_to_download, "rb") as fp:
+                assets_data = fp.read()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="📥 Download draft_predictor.json",
+                    data=model_data,
+                    file_name="draft_predictor.json",
+                    mime="application/json",
                 )
-                
-                # Store the file paths to make them available for download
-                st.session_state.model_path_to_download = model_filepath
-                st.session_state.assets_path_to_download = assets_filepath
-
-            st.success(feedback)
-        except Exception as e:
-            st.error(f"An error occurred during training: {e}")
-
-# --- Display Download Buttons after files have been created ---
-if st.session_state.model_path_to_download and st.session_state.assets_path_to_download:
-    st.markdown("---")
-    st.subheader("Download Your New Model Files")
-    st.info("Download both files, upload them to your GitHub repository, then reboot the app to apply the changes.")
-
-    try:
-        # Read the newly created files back from the server's disk
-        with open(st.session_state.model_path_to_download, "rb") as fp:
-            model_data = fp.read()
-        with open(st.session_state.assets_path_to_download, "rb") as fp:
-            assets_data = fp.read()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="📥 Download draft_predictor.json",
-                data=model_data,
-                file_name="draft_predictor.json",
-                mime="application/json",
-            )
-        with col2:
-            st.download_button(
-                label="📥 Download draft_assets.json",
-                data=assets_data,
-                file_name="draft_assets.json",
-                mime="application/json",
-            )
-    except FileNotFoundError:
-        st.error("Could not find the newly created model files to offer for download. Please try training again.")
-
+            with col2:
+                st.download_button(
+                    label="📥 Download draft_assets.json",
+                    data=assets_data,
+                    file_name="draft_assets.json",
+                    mime="application/json",
+                )
+        except FileNotFoundError:
+            st.error("Could not find the newly created model files to offer for download. Please try training again.")
