@@ -148,22 +148,38 @@ def single_table_dashboard():
         cutoff_dates = set()
 
     played = [m for m in simulation_matches if m.get("winner") in ("1", "2") and m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
-    unplayed = [m for m in simulation_matches if m not in played]
+    unplayed = [m for m in simulation_matches if m.get("winner") not in ("1", "2")]
+    all_played_matches = [m for m in simulation_matches if m.get("winner") in ("1", "2")]
+
+    if cutoff_week_idx == -1:
+        cutoff_dates = set()
+    elif week_blocks:
+        cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i])
+    else:
+        cutoff_dates = set()
+    
+    played = [m for m in all_played_matches if m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
 
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
     
-    matches_by_week = defaultdict(list)
-    for match in unplayed:
-        if "date" not in match: continue
-        for week_idx, week_dates in enumerate(week_blocks):
-            if pd.to_datetime(match['date']).date() in week_dates: matches_by_week[week_idx].append(match); break
-
     if not unplayed:
         st.info("No matches left to simulate.")
-    elif not matches_by_week:
-        st.info("No upcoming matches to display for the selected cutoff week.")
     else:
+        matches_by_week = defaultdict(list)
+        for match in unplayed:
+            if "date" not in match: continue
+            for week_idx, week_dates in enumerate(week_blocks):
+                try:
+                    if pd.to_datetime(match['date']).date() in week_dates: 
+                        matches_by_week[week_idx].append(match)
+                        break
+                except (ValueError, TypeError):
+                    continue
+        
+        if not matches_by_week and unplayed:
+             st.info("Upcoming matches have no date information and cannot be displayed by week.")
+
         for week_idx in sorted(matches_by_week.keys()):
             week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
             with st.expander(f"📅 {week_label}", expanded=False):
@@ -184,14 +200,40 @@ def single_table_dashboard():
                             if idx + col_idx < len(date_matches):
                                 m = date_matches[idx + col_idx]
                                 teamA, teamB = get_teams_from_match(m); bo = m.get("bestof", 3)
-                                match_key = (teamA, teamB, date)
+                                # --- MODIFICATION START: Use the unique full timestamp for keys ---
+                                match_key = (teamA, teamB, m.get('date'))
                                 with col, st.container():
                                     st.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px; background-color: #262730; border-radius: 10px; margin-bottom: 10px;'>{teamA} vs {teamB}</div>", unsafe_allow_html=True)
                                     options = get_series_outcome_options(teamA, teamB, bo)
-                                    selected = st.radio("",[opt[0] for opt in options], key=f"s_radio_{date}_{teamA}_{teamB}", label_visibility="collapsed", horizontal=False)
+                                    selected = st.radio("",[opt[0] for opt in options], key=f"s_radio_{m.get('date')}_{teamA}_{teamB}", label_visibility="collapsed", horizontal=False)
+                                    # --- MODIFICATION END ---
                                     for opt_label, opt_code in options:
                                         if opt_label == selected: forced_outcomes[match_key] = opt_code; break
                     st.markdown("---")
+
+    current_wins, current_diff = defaultdict(int), defaultdict(int)
+    for m in played:
+        teamA, teamB = get_teams_from_match(m)
+        winner_idx = int(m["winner"]) - 1
+        winner, loser = (teamA, teamB) if winner_idx == 0 else (teamB, teamA)
+        current_wins[winner] += 1
+        score_winner, score_loser = 0, 0
+        for game in m.get("match2games", []):
+            if str(game.get('winner')) == str(winner_idx + 1):
+                score_winner += 1
+            elif game.get('winner') is not None:
+                score_loser += 1
+        current_diff[winner] += score_winner - score_loser
+        current_diff[loser] += score_loser - score_winner
+
+    unplayed_tuples = []
+    for m in unplayed:
+        teamA, teamB = get_teams_from_match(m)
+        unplayed_tuples.append((teamA, teamB, m.get("date"), m.get("bestof", 3)))
+
+    sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)
+    
+    st.markdown("---"); st.subheader("Results")
 
     ### LOGIC HIGHLIGHT ###
     # This is the section that processes the results of completed matches.
