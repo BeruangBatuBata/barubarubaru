@@ -57,16 +57,17 @@ def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
                                 stats_data[hero]["red_picks"] += 1
                                 if is_win: stats_data[hero]["red_wins"] += 1
 
-            # Process bans for the whole game
-            game_bans = set()
-            for i in range(1, 6):
-                ban1 = extradata.get(f'team1ban{i}')
-                ban2 = extradata.get(f'team2ban{i}')
-                if ban1: game_bans.add(ban1)
-                if ban2: game_bans.add(ban2)
-            
-            for hero in game_bans:
-                stats_data[hero]["bans"] += 1
+            # Process bans for the whole game, only if the match is relevant
+            if is_team1_in_filter or is_team2_in_filter:
+                game_bans = set()
+                for i in range(1, 6):
+                    ban1 = extradata.get(f'team1ban{i}')
+                    ban2 = extradata.get(f'team2ban{i}')
+                    if ban1: game_bans.add(ban1)
+                    if ban2: game_bans.add(ban2)
+                
+                for hero in game_bans:
+                    stats_data[hero]["bans"] += 1
 
 
     df_rows = []
