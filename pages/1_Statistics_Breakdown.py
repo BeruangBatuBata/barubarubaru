@@ -8,48 +8,35 @@ build_sidebar()
 
 st.title("📊 Statistics Breakdown")
 
-if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
+if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matches']:
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
 
 @st.cache_data
-def get_stats_df(_pooled_matches, team_filter):
-    return calculate_hero_stats_for_team(_pooled_matches, team_filter)
+def get_stats_df(_parsed_matches, team_filter):
+    return calculate_hero_stats_for_team(_parsed_matches, team_filter)
 
-# --- MODIFICATION START: Logic to handle stage filtering ---
-pooled_matches = st.session_state['pooled_matches']
+# --- FINAL FIX: Use the correct 'parsed_matches' session state ---
+parsed_matches = st.session_state['parsed_matches']
 selected_stage = "All Stages"
-num_selected_tournaments = len(st.session_state.get('selected_tournaments', []))
-
-# --- DEBUGGING START ---
-st.write(f"DEBUG: Number of tournaments selected: **{num_selected_tournaments}**")
-# --- DEBUGGING END ---
 
 # Only show the stage filter if a single tournament is selected
-if num_selected_tournaments == 1:
-    # Get unique, sorted stages from the loaded data
+if len(st.session_state.get('selected_tournaments', [])) == 1:
     unique_stages = sorted(
-        list(set(m['stage_type'] for m in pooled_matches if 'stage_type' in m)),
-        key=lambda s: min(m['stage_priority'] for m in pooled_matches if m['stage_type'] == s)
+        list(set(m['stage_type'] for m in parsed_matches if 'stage_type' in m)),
+        key=lambda s: min(m['stage_priority'] for m in parsed_matches if m['stage_type'] == s)
     )
     
-    # --- DEBUGGING START ---
-    st.write(f"DEBUG: Unique stages found: **{unique_stages}**")
-    # --- DEBUGGING END ---
-
     if unique_stages:
-        # Create the filter. It will show one or more stages depending on the tournament.
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
-
 
 # Filter the matches if a specific stage has been selected
 if selected_stage != "All Stages":
-    filtered_matches = [m for m in pooled_matches if m.get('stage_type') == selected_stage]
+    filtered_matches = [m for m in parsed_matches if m.get('stage_type') == selected_stage]
 else:
-    filtered_matches = pooled_matches
-# --- MODIFICATION END ---
+    filtered_matches = parsed_matches
 
-played_matches = [match for match in filtered_matches if any(game.get("winner") for game in match.get("match2games", []))]
+played_matches = [match for match in filtered_matches if match.get("winner")]
 all_teams = sorted(list(set(opp.get('name','').strip() for match in played_matches for opp in match.get("match2opponents", []) if opp.get('name'))))
 
 
@@ -61,9 +48,7 @@ with col1_filter:
 st.info(f"Displaying hero statistics for **{selected_team}** in the selected tournaments: **{', '.join(st.session_state['selected_tournaments'])}**")
 
 with st.spinner(f"Calculating stats for {selected_team}..."):
-    # --- MODIFICATION START: Use the potentially filtered match list ---
     df_stats = get_stats_df(tuple(filtered_matches), selected_team)
-    # --- MODIFICATION END ---
 
 if df_stats.empty:
     st.warning(f"No match data found for '{selected_team}' in the selected tournaments.")
