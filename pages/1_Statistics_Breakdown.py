@@ -13,10 +13,11 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
     st.stop()
 
 @st.cache_data
-def get_stats_df(_parsed_matches, team_filter):
-    return calculate_hero_stats_for_team(_parsed_matches, team_filter)
+def get_stats_df(_matches_to_analyze, team_filter):
+    # The function now expects the filtered list of matches
+    return calculate_hero_stats_for_team(_matches_to_analyze, team_filter)
 
-# --- FINAL FIX: Use the correct 'parsed_matches' session state ---
+# Use the correct 'parsed_matches' session state as the source of truth
 parsed_matches = st.session_state['parsed_matches']
 selected_stage = "All Stages"
 
@@ -36,7 +37,8 @@ if selected_stage != "All Stages":
 else:
     filtered_matches = parsed_matches
 
-played_matches = [match for match in filtered_matches if match.get("winner")]
+# Now, derive the list of teams from the potentially filtered matches
+played_matches = [match for match in filtered_matches if any(game.get("winner") for game in match.get("match2games", []))]
 all_teams = sorted(list(set(opp.get('name','').strip() for match in played_matches for opp in match.get("match2opponents", []) if opp.get('name'))))
 
 
@@ -48,10 +50,11 @@ with col1_filter:
 st.info(f"Displaying hero statistics for **{selected_team}** in the selected tournaments: **{', '.join(st.session_state['selected_tournaments'])}**")
 
 with st.spinner(f"Calculating stats for {selected_team}..."):
+    # Pass the correctly filtered list of matches to the analysis function
     df_stats = get_stats_df(tuple(filtered_matches), selected_team)
 
 if df_stats.empty:
-    st.warning(f"No match data found for '{selected_team}' in the selected tournaments.")
+    st.warning(f"No match data found for '{selected_team}' in the selected tournaments or stage.")
 else:
     with col2_sort:
         sort_column = st.selectbox("Sort by:", options=df_stats.columns, index=list(df_stats.columns).index("Presence (%)"))
