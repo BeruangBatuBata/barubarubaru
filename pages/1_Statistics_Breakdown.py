@@ -8,55 +8,6 @@ build_sidebar()
 
 st.title("📊 Statistics Breakdown")
 
-# --- HOW TO USE SECTION ---
-with st.expander("ℹ️ How to Use This Dashboard", expanded=False):
-    st.markdown("""
-        Welcome to the MLBB Pro-Scene Analytics Dashboard! Here’s a quick guide to get you started:
-
-        ### 1. Loading Data (The First Step!)
-        - **Go to the "Overview" page** using the navigation on the left.
-        - In the sidebar, you'll see a **"Tournament Selection"** area.
-        - Click to expand it and choose one or more tournaments you want to analyze. You can select by Region, Split, or League.
-        - Once you've made your selections, click the **"Load Data"** button at the bottom of the sidebar.
-        - The app will then fetch all the match data for the selected tournaments. You'll see a success message on the Overview page when it's done.
-
-        ### 2. Exploring the Features
-        Once data is loaded, you can navigate to any of the pages to explore different insights:
-
-        - **📊 Statistics Breakdown (This Page):**
-          - View detailed hero statistics like pick rate, ban rate, win rate, and presence.
-          - Use the dropdown menus to filter the stats for a specific team or a particular stage of a tournament (e.g., Playoffs, Group Stage).
-          - Sort the data by any column to find top-performing heroes.
-
-        - **🔎 Hero Detail Drilldown:**
-          - Select a single hero to see a deep dive into their performance.
-          - Analyze which teams play the hero most effectively.
-          - See how the hero performs against every other hero in the game.
-
-        - **⚔️ Head-to-Head:**
-          - Compare two teams directly to see their historical win/loss record and their most common picks and bans against each other.
-          - Switch to "Hero vs. Hero" mode to see which of two heroes wins more often when they are on opposing teams.
-
-        - **🤝 Synergy & Counter Analysis:**
-          - Discover the best and worst performing hero duos (Synergy/Anti-Synergy).
-          - Use the "Counters" mode to find which heroes are statistically strong or weak against a selected hero.
-          - Filter by team to see team-specific strategies.
-
-        - **🔮 Playoff Qualification Odds:**
-          - Run simulations for a selected tournament to see the probability of each team qualifying for playoffs.
-          - Use the "What-If Scenarios" to force outcomes of upcoming matches and see how it impacts the final standings.
-
-        - **🎯 Drafting Assistant:**
-          - An AI-powered tool to help with the drafting phase.
-          - Select two teams and fill in the picks and bans as they happen.
-          - The AI will provide a live win probability and suggest the best heroes to pick or ban next.
-
-        - **👑 Admin Panel:**
-          - Re-train the AI model using the currently loaded tournament data to keep its predictions up-to-date with the latest meta.
-    """)
-# --- END SECTION ---
-
-
 if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matches']:
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
@@ -91,7 +42,7 @@ if len(st.session_state.get('selected_tournaments', [])) == 1:
         list(set(m['stage_type'] for m in parsed_matches if 'stage_type' in m)),
         key=lambda s: min(m['stage_priority'] for m in parsed_matches if m['stage_type'] == s)
     )
-
+    
     if unique_stages:
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
 
@@ -117,8 +68,8 @@ with st.spinner(f"Calculating stats for {selected_team}..."):
     # --- MODIFICATION START: Updated function call ---
     # Pass the full dataset and the simple filter strings to the cached function
     df_stats = get_stats_df(
-        _all_matches=tuple(parsed_matches),
-        team_filter=selected_team,
+        _all_matches=tuple(parsed_matches), 
+        team_filter=selected_team, 
         stage_filter=selected_stage
     )
     # --- MODIFICATION END ---
@@ -134,9 +85,9 @@ else:
 
     df_display = df_stats.sort_values(by=sort_column, ascending=(sort_order == "Ascending")).reset_index(drop=True)
     df_display.index += 1
-
+    
     st.dataframe(df_display, use_container_width=True)
-
+    
     csv = df_display.to_csv(index=False).encode('utf-8')
     with col4_download:
         st.download_button(
