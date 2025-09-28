@@ -24,11 +24,42 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
 
 # --- Global Data Prep ---
 tournament_name = st.session_state.selected_tournaments[0]
-regular_season_matches = [m for m in st.session_state.parsed_matches if m.get("is_regular_season", False)]
+
+# --- MODIFICATION START: Stage-based Match Filtering ---
+all_matches_for_tournament = st.session_state['parsed_matches']
+
+# Determine unique stages for the selected tournament
+unique_stages = sorted(
+    list(set(m['stage_type'] for m in all_matches_for_tournament if 'stage_type' in m)),
+    key=lambda s: min(m['stage_priority'] for m in all_matches_for_tournament if m['stage_type'] == s)
+)
+
+selected_stage = None
+# Only show the stage filter if one tournament is selected and it has more than one stage
+if len(st.session_state.get('selected_tournaments', [])) == 1 and len(unique_stages) > 1:
+    st.sidebar.subheader("Simulator Stage Selection")
+    selected_stage = st.sidebar.selectbox(
+        f"Select Stage to Simulate for {tournament_name}:",
+        unique_stages,
+        index=0,
+        help="Choose which part of the tournament to run the simulation for."
+    )
+    st.sidebar.info(f"Simulating for the '{selected_stage}' stage.")
+
+# Filter matches based on the selected stage (or use all if no filter is active)
+if selected_stage:
+    regular_season_matches = [m for m in all_matches_for_tournament if m.get("stage_type") == selected_stage]
+else:
+    # Fallback to old logic if no stages or multiple tournaments are selected
+    regular_season_matches = [m for m in all_matches_for_tournament if m.get("is_regular_season", True)] # Assume True if key is missing for older data
+
 if not regular_season_matches:
-    st.error("No regular season matches found for this feature.")
+    st.error(f"No match data found for the selected stage ('{selected_stage}'). Please select another stage.")
     st.stop()
+
 teams = sorted(list(set(m["teamA"] for m in regular_season_matches) | set(m["teamB"] for m in regular_season_matches)))
+# --- MODIFICATION END ---
+
 
 # --- Cached Simulation Functions ---
 @st.cache_data(show_spinner="Running single-table simulation...")
@@ -440,17 +471,7 @@ def group_dashboard():
                 if sim_results is not None and not sim_results.empty:
                     group_probs = sim_results[sim_results['Group'] == group_name].drop(columns=['Group'])
                     st.dataframe(group_probs, use_container_width=True, hide_index=True)
-    for i, group_name in enumerate(sorted(groups.keys())):
-        with result_tabs[i+1]:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Current Standings ({group_name})**"); standings_df = build_standings_table(groups[group_name], played)
-                st.dataframe(standings_df, use_container_width=True)
-            with col2:
-                st.write(f"**Playoff Probabilities ({group_name})**")
-                if sim_results is not None and not sim_results.empty:
-                    group_probs = sim_results[sim_results['Group'] == group_name].drop(columns=['Group'])
-                    st.dataframe(group_probs, use_container_width=True, hide_index=True)
+
 
 # --- Page Router ---
 # On first load for a tournament, try to load the saved format
