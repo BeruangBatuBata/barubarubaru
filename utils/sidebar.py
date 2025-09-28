@@ -5,7 +5,7 @@ import os
 import base64
 from collections import defaultdict
 
-def get_image_as_base64(path):
+def get_image_as_base_64(path):
     """Encodes a local image file to a Base64 string for embedding in HTML."""
     if os.path.exists(path):
         with open(path, "rb") as image_file:
@@ -17,7 +17,7 @@ def build_sidebar():
     Creates the persistent sidebar with an advanced, tabbed tournament selection UI.
     """
     # --- Sidebar Header ---
-    logo_base64 = get_image_as_base64("beruangbatubata.png")
+    logo_base64 = get_image_as_base_64("beruangbatubata.png")
     if logo_base64:
         st.sidebar.markdown(
             f"""
@@ -56,19 +56,19 @@ def build_sidebar():
 
 
         # --- Callback Functions ---
-        def sync_checkbox_state(t_name):
-            # Find which checkbox was ticked and update the central state
-            # This is more complex now with 3 possible keys per tournament
-            key_prefixes = ["region_chk_", "split_chk_", "league_chk_"]
-            for prefix in key_prefixes:
-                key = f"{prefix}{t_name}"
-                if key in st.session_state:
-                    st.session_state.tournament_selections[t_name] = st.session_state[key]
-                    break # Stop after finding the one that changed
+        # --- MODIFICATION START: Updated sync function ---
+        def sync_checkbox_state(t_name, changed_key):
+            # 1. Get the new value from the checkbox that was just clicked
+            new_value = st.session_state[changed_key]
             
-            # Now, sync all checkboxes for this tournament to the new state
-            for prefix in key_prefixes:
-                st.session_state[f"{prefix}{t_name}"] = st.session_state.tournament_selections[t_name]
+            # 2. Update the central source of truth
+            st.session_state.tournament_selections[t_name] = new_value
+            
+            # 3. Force all other checkboxes for the same tournament to match
+            st.session_state[f"region_chk_{t_name}"] = new_value
+            st.session_state[f"split_chk_{t_name}"] = new_value
+            st.session_state[f"league_chk_{t_name}"] = new_value
+        # --- MODIFICATION END ---
 
 
         def select_all(group, value=True):
@@ -97,7 +97,10 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{region}", on_click=select_all, args=(region_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in region_tournaments:
-                        st.checkbox(t_name, key=f"region_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
+                        # --- MODIFICATION START: Use the central state for value and pass the key to the callback ---
+                        key = f"region_chk_{t_name}"
+                        st.checkbox(t_name, value=st.session_state.tournament_selections[t_name], key=key, on_change=sync_checkbox_state, args=(t_name, key))
+                        # --- MODIFICATION END ---
         
         with split_tab:
             for split in sorted_splits:
@@ -108,7 +111,10 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{split}", on_click=select_all, args=(split_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in split_tournaments:
-                        st.checkbox(t_name, key=f"split_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
+                        # --- MODIFICATION START: Use the central state for value and pass the key to the callback ---
+                        key = f"split_chk_{t_name}"
+                        st.checkbox(t_name, value=st.session_state.tournament_selections[t_name], key=key, on_change=sync_checkbox_state, args=(t_name, key))
+                        # --- MODIFICATION END ---
         
         with league_tab:
             for league in sorted_leagues:
@@ -119,7 +125,10 @@ def build_sidebar():
                     col2.button("Deselect All", key=f"deselect_all_{league}", on_click=select_all, args=(league_tournaments, False), use_container_width=True)
                     st.markdown("---")
                     for t_name in league_tournaments:
-                        st.checkbox(t_name, key=f"league_chk_{t_name}", on_change=sync_checkbox_state, args=(t_name,))
+                        # --- MODIFICATION START: Use the central state for value and pass the key to the callback ---
+                        key = f"league_chk_{t_name}"
+                        st.checkbox(t_name, value=st.session_state.tournament_selections[t_name], key=key, on_change=sync_checkbox_state, args=(t_name, key))
+                        # --- MODIFICATION END ---
 
 
         # --- Data Loading and Cache Clearing Logic ---
