@@ -207,7 +207,7 @@ def single_table_dashboard():
         teamA, teamB = get_teams_from_match(m)
         unplayed_tuples.append((teamA, teamB, m.get("date"), m.get("bestof", 3)))
 
-    sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), tuple(frozet(b.items()) for b in st.session_state.current_brackets), n_sim)
+    sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)
     
     st.markdown("---"); st.subheader("Results")
     col1, col2 = st.columns(2)
