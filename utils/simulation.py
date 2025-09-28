@@ -100,6 +100,7 @@ def get_series_outcome_options(teamA, teamB, bo: int):
 
 def build_standings_table(teams, played_matches):
     stats = {team: {'match_wins': 0, 'match_count': 0, 'game_wins': 0, 'game_losses': 0} for team in teams}
+    
     for m in played_matches:
         opps = m.get("match2opponents", [])
         if len(opps) < 2: continue
@@ -107,10 +108,10 @@ def build_standings_table(teams, played_matches):
         team_a = opps[0].get('name')
         team_b = opps[1].get('name')
         
-        if team_a not in teams or team_b not in teams:
+        # This check is still useful to prevent errors if a team from a match isn't in the master list
+        if team_a not in stats or team_b not in stats:
             continue
             
-        # Calculate game scores by counting wins in the 'match2games' list
         score_a = 0
         score_b = 0
         for game in m.get("match2games", []):
@@ -132,19 +133,23 @@ def build_standings_table(teams, played_matches):
             stats[team_b]['match_wins'] += 1
             
     rows = []
+    # --- MODIFICATION START: The incorrect "if" condition is removed ---
+    # The loop now processes every team, ensuring the table is always fully populated.
     for team, data in stats.items():
-        if data['match_count'] > 0:
-            mw, ml = data['match_wins'], data['match_count'] - data['match_wins']
-            gw, gl = data['game_wins'], data['game_losses']
-            diff = gw - gl
-            rows.append({
-                "Team": team, 
-                "Match W-L": f"{mw}-{ml}", 
-                "Game W-L": f"{gw}-{gl}", 
-                "Diff": diff, 
-                "_MW": mw, 
-                "_Diff": diff
-            })
+        mw = data['match_wins']
+        ml = data['match_count'] - data['match_wins']
+        gw = data['game_wins']
+        gl = data['game_losses']
+        diff = gw - gl
+        rows.append({
+            "Team": team, 
+            "Match W-L": f"{mw}-{ml}", 
+            "Game W-L": f"{gw}-{gl}", 
+            "Diff": diff, 
+            "_MW": mw, 
+            "_Diff": diff
+        })
+    # --- MODIFICATION END ---
             
     if not rows: return pd.DataFrame()
     
