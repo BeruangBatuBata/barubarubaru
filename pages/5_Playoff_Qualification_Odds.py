@@ -414,7 +414,7 @@ def group_dashboard():
                                 with col, st.container():
                                     st.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px; background-color: #262730; border-radius: 10px; margin-bottom: 10px;'>{teamA} vs {teamB}</div>", unsafe_allow_html=True)
                                     options = get_series_outcome_options(teamA, teamB, bo)
-                                    selected = st.radio("", [opt[0] for opt in options], key=f"g_radio_{date}_{teamA}_{teamB}", label_visibility="collapsed", horizontal=False)
+                                    selected = st.radio("", [opt[0] for opt in options], key=f"g_radio_{m.get('date')}_{teamA}_{teamB}", label_visibility="collapsed", horizontal=False)
                                     for opt_label, opt_code in options:
                                         if opt_label == selected: forced_outcomes[match_key] = opt_code; break
                     st.markdown("---")
