@@ -8,39 +8,46 @@ build_sidebar()
 
 st.title("🔎 Hero Detail Drilldown")
 
-if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
+if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matches']:
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
 
-# --- MODIFICATION START: Correctly implement conditional stage filtering ---
-matches_to_analyze = st.session_state['parsed_matches']
+# --- Main Page Logic ---
+parsed_matches = st.session_state['parsed_matches']
 selected_stage = "All Stages"
 
-# Only show the filter if a single tournament is selected
+# Conditional Stage Filter UI (remains the same)
 if len(st.session_state.get('selected_tournaments', [])) == 1:
     unique_stages = sorted(
-        list(set(m['stage_type'] for m in matches_to_analyze if 'stage_type' in m)),
-        key=lambda s: min(m['stage_priority'] for m in matches_to_analyze if m['stage_type'] == s)
+        list(set(m['stage_type'] for m in parsed_matches if 'stage_type' in m)),
+        key=lambda s: min(m['stage_priority'] for m in parsed_matches if m['stage_type'] == s)
     )
     
     if unique_stages:
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
 
-# Filter the matches based on the selection BEFORE they are passed to the cached function
-if selected_stage != "All Stages":
-    matches_to_analyze = [m for m in matches_to_analyze if m.get('stage_type') == selected_stage]
-# --- MODIFICATION END ---
-
-
-# Cache the expensive data processing step
+# --- MODIFICATION START: Apply the successful caching pattern from Page 1 ---
 @st.cache_data
-def get_drilldown_data(_matches):
-    """This function now receives the pre-filtered list of matches."""
-    return process_hero_drilldown_data(_matches)
+def get_drilldown_data(_all_matches, stage_filter):
+    """
+    This cached function now takes the stage filter as a simple argument
+    and performs the filtering inside, making the cache reliable.
+    """
+    # 1. Filter the matches based on the stage selection
+    if stage_filter != "All Stages":
+        matches_to_analyze = [m for m in _all_matches if m.get('stage_type') == stage_filter]
+    else:
+        matches_to_analyze = _all_matches
+    
+    # 2. Process the correctly filtered list of matches
+    return process_hero_drilldown_data(matches_to_analyze)
 
-# Load data from cache using the (now correctly filtered) match list
-all_heroes, hero_stats_map = get_drilldown_data(tuple(matches_to_analyze))
-
+# Load data by passing the full dataset and the filter string to the cached function
+all_heroes, hero_stats_map = get_drilldown_data(
+    _all_matches=tuple(parsed_matches),
+    stage_filter=selected_stage
+)
+# --- MODIFICATION END ---
 
 selected_hero = st.selectbox(
     "Select a Hero to Analyze:",
