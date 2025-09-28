@@ -47,27 +47,71 @@ else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
-# --- HOW TO USE SECTION ---
+# --- HOW TO USE SECTION (DETAILED) ---
 with st.expander("ℹ️ How to Use This Dashboard", expanded=True):
     st.markdown("""
-        Welcome to the MLBB Pro-Scene Analytics Dashboard! Here’s a quick guide to get you started:
+        Welcome to the MLBB Pro-Scene Analytics Dashboard! Here’s a detailed guide to help you unlock its full potential.
 
-        ### 1. Loading Data (The First Step!)
-        - In the sidebar on the left, you'll see a **"Tournament Selection"** area.
-        - Click to expand it and choose one or more tournaments you want to analyze. You can select by Region, Split, or League.
-        - Once you've made your selections, click the **"Load Data"** button at the bottom of the sidebar.
-        - The app will then fetch all the match data for the selected tournaments. You'll see a success message below when it's done.
+        ### **Step 1: Load Your Data**
+        This is the most important step! No analysis can be done without data.
+        - **1. Use the Sidebar:** On the left, find the **"Tournament Selection"** section.
+        - **2. Choose Tournaments:** Click to expand the tabs and select the tournaments you wish to analyze. You can mix and match from different regions, splits, or leagues.
+        - **3. Load Data:** Scroll to the bottom of the sidebar and click the big **"Load Data"** button.
+        - **4. Wait for Confirmation:** A success message will appear on this page, confirming how many matches have been loaded. You are now ready to explore!
 
-        ### 2. Exploring the Features
-        Once data is loaded, you can navigate to any of the pages to explore different insights:
+        ---
 
-        - **📊 Statistics Breakdown:** View hero pick/ban/win rates, filterable by team and tournament stage.
-        - **🔎 Hero Detail Drilldown:** Deep dive into a hero's performance by team and against specific opponents.
-        - **⚔️ Head-to-Head:** Compare two teams directly or see how two heroes perform against each other.
-        - **🤝 Synergy & Counter Analysis:** Discover the best and worst performing hero duos.
-        - **🔮 Playoff Qualification Odds:** Run simulations to predict tournament outcomes and test "what-if" scenarios.
-        - **🎯 Drafting Assistant:** Get live, AI-powered draft recommendations and win probability analysis.
-        - **👑 Admin Panel:** Re-train the AI model with the latest data you've selected.
+        ### **Feature Breakdown**
+        Once your data is loaded, navigate through the pages in the sidebar to access these powerful tools:
+
+        - **`📊 Statistics Breakdown`**
+          - **What it is:** The main statistics page for all heroes.
+          - **How to use it:**
+            - View a table with key metrics: **Picks, Bans, Win Rate (WR%), and Presence %** (Pick% + Ban%).
+            - Use the **"Filter by Team"** dropdown to see stats for a single team.
+            - If you loaded only one tournament, you can also **"Filter by Stage"** (e.g., Group Stage vs. Playoffs).
+            - Click the column headers or use the "Sort by" dropdown to rank heroes and identify the meta.
+
+        - **`🔎 Hero Detail Drilldown`**
+          - **What it is:** A deep-dive analysis page for a single hero.
+          - **How to use it:**
+            - Select a hero from the dropdown menu.
+            - **Performance by Team Table:** See which teams play this hero the most and which have the highest win rate with it.
+            - **Performance Against Opposing Heroes Table:** Discover which enemy heroes your selected hero statistically wins or loses against.
+
+        - **`⚔️ Head-to-Head`**
+          - **What it is:** A direct comparison tool.
+          - **How to use it:**
+            - **Team vs. Team:** Select two teams to see their direct match history, including the series score. You can also view their most common picks and bans specifically in matches against each other.
+            - **Hero vs. Hero:** Select two heroes to find out how many times they have played on opposing teams and which one has a higher win rate in that matchup.
+
+        - **`🤝 Synergy & Counter Analysis`**
+          - **What it is:** A tool to find powerful hero combinations and matchups.
+          - **How to use it:**
+            - **Synergy/Anti-Synergy Mode:** Find hero pairs that have the highest (or lowest) win rates when played on the same team.
+            - **Counters Mode:** Select a hero to see which heroes they perform best against (`Counters`) and worst against (`Countered By`).
+            - **Filters:** You can refine your analysis by team, minimum number of games played together, and number of results to show.
+            - **Trending Tabs:** Check the "Trending Up" and "Trending Down" tabs to see which hero duos have improved or declined in performance recently.
+
+        - **`🔮 Playoff Qualification Odds`**
+          - **What it is:** A powerful Monte Carlo simulator for tournament outcomes.
+          - **How to use it:**
+            - This page works best when you load a single, ongoing tournament.
+            - **Standings:** View the current tournament standings based on completed matches.
+            - **What-If Scenarios:** For upcoming matches, you can manually set a winner (e.g., Team A wins 2-0).
+            - **Run Simulation:** The tool runs thousands of simulations of the remaining games to calculate the final probability for each team to land in a specific bracket (e.g., Upper Bracket, Playoffs, Eliminated).
+
+        - **`🎯 Drafting Assistant`**
+          - **What it is:** An AI tool that analyzes drafts in real-time.
+          - **How to use it:**
+            - **Live Draft:** Select the Blue and Red teams. As a draft happens live, fill in the picks and bans for each team using the dropdowns.
+            - **Live Analysis:** The AI will continuously update the win probability for each side based on the heroes drafted and the historical performance of the teams.
+            - **AI Suggestions:** Toggle "Show AI Suggestions" to get recommendations for the next best hero to pick or ban.
+            - **Review Past Games:** You can also load any previously played game from your dataset to analyze its draft with the AI.
+
+        - **`👑 Admin Panel`**
+          - **What it is:** The control panel for the AI model.
+          - **How to use it:** After loading a large and recent dataset, you can click **"Train New AI Model"** to update the AI with the latest meta. This ensures its predictions remain accurate.
     """)
 # --- END SECTION ---
 
