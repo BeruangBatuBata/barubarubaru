@@ -358,14 +358,27 @@ def group_dashboard():
     unplayed = [m for m in simulation_matches if m.get("winner") not in ("1", "2")]
     all_played_matches = [m for m in simulation_matches if m.get("winner") in ("1", "2")]
 
-    if cutoff_week_idx == -1:
-        cutoff_dates = set()
-    elif week_blocks:
-         cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i])
+    if cutoff_week_idx == -1: # "Week 0" selected
+        played = []
+        unplayed = simulation_matches
     else:
-         cutoff_dates = set()
-    
-    played = [m for m in all_played_matches if m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
+        cutoff_date = week_blocks[cutoff_week_idx][-1] if week_blocks else None
+        played = []
+        unplayed = []
+        if cutoff_date:
+            for m in simulation_matches:
+                match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+                if not match_date:
+                    unplayed.append(m) # Assume matches without dates are unplayed
+                    continue
+                
+                # A match is "played" if it has a winner AND its date is on or before the cutoff
+                if m.get("winner") in ("1", "2") and match_date <= cutoff_date:
+                    played.append(m)
+                else:
+                    unplayed.append(m)
+        else: # No week blocks, assume all matches are unplayed
+            unplayed = simulation_matches
     
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
