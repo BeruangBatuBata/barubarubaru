@@ -47,71 +47,82 @@ else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
-# --- HOW TO USE SECTION (DETAILED) ---
-with st.expander("ℹ️ How to Use This Dashboard", expanded=True):
+# --- HOW TO USE SECTION (MOST DETAILED) ---
+with st.expander("ℹ️ How to Use This Dashboard: A Detailed Guide", expanded=True):
     st.markdown("""
-        Welcome to the MLBB Pro-Scene Analytics Dashboard! Here’s a detailed guide to help you unlock its full potential.
+        Welcome to your advanced analytics suite for professional MLBB! This guide will walk you through each feature step-by-step.
 
-        ### **Step 1: Load Your Data**
-        This is the most important step! No analysis can be done without data.
-        - **1. Use the Sidebar:** On the left, find the **"Tournament Selection"** section.
-        - **2. Choose Tournaments:** Click to expand the tabs and select the tournaments you wish to analyze. You can mix and match from different regions, splits, or leagues.
-        - **3. Load Data:** Scroll to the bottom of the sidebar and click the big **"Load Data"** button.
-        - **4. Wait for Confirmation:** A success message will appear on this page, confirming how many matches have been loaded. You are now ready to explore!
+        ### **Step 1: Loading Tournament Data (Mandatory First Step)**
+        The dashboard is powerless without data. Follow these steps to get started:
+        1.  **Navigate the Sidebar:** On the left of your screen is the main sidebar. Find the section titled **"Tournament Selection"**.
+        2.  **Select Tournaments:**
+            - You can browse tournaments grouped **By Region**, **By Split**, or **By League**.
+            - Check the boxes next to the tournaments you want to include in your analysis. You can select a single tournament for a focused view or multiple tournaments to analyze a broader meta.
+        3.  **Load the Data:** After selecting your tournaments, click the **"Load Data"** button at the bottom of the sidebar.
+        4.  **Confirmation:** The main page will display a success message confirming that the data has been loaded and is ready for analysis. You can now navigate to any page in the sidebar.
 
         ---
 
-        ### **Feature Breakdown**
-        Once your data is loaded, navigate through the pages in the sidebar to access these powerful tools:
+        ### **Feature-by-Feature Guide**
 
-        - **`📊 Statistics Breakdown`**
-          - **What it is:** The main statistics page for all heroes.
-          - **How to use it:**
-            - View a table with key metrics: **Picks, Bans, Win Rate (WR%), and Presence %** (Pick% + Ban%).
-            - Use the **"Filter by Team"** dropdown to see stats for a single team.
-            - If you loaded only one tournament, you can also **"Filter by Stage"** (e.g., Group Stage vs. Playoffs).
-            - Click the column headers or use the "Sort by" dropdown to rank heroes and identify the meta.
+        #### `📊 Statistics Breakdown`
+        * **Purpose:** To get a high-level overview of the hero meta based on your selected data.
+        * **How to Use:**
+            * The main view is a comprehensive table showing every hero's **Pick Rate, Ban Rate, Win Rate, and Presence** (a hero's combined pick and ban rate, indicating their meta relevance).
+            * **Filter by Team:** Use this dropdown to isolate stats for a single team, revealing their most picked and most successful heroes.
+            * **Filter by Stage:** When analyzing a single tournament, this dropdown appears, allowing you to separate **Group Stage** stats from **Playoffs** stats to see how the meta evolves.
+            * **Sort and Download:** You can sort the table by any column to quickly identify top-tier heroes (e.g., sort by "Win Rate (%)" to see who wins the most). Use the "Download as CSV" button to export your current view for offline analysis.
 
-        - **`🔎 Hero Detail Drilldown`**
-          - **What it is:** A deep-dive analysis page for a single hero.
-          - **How to use it:**
-            - Select a hero from the dropdown menu.
-            - **Performance by Team Table:** See which teams play this hero the most and which have the highest win rate with it.
-            - **Performance Against Opposing Heroes Table:** Discover which enemy heroes your selected hero statistically wins or loses against.
+        #### `🔎 Hero Detail Drilldown`
+        * **Purpose:** To conduct a granular analysis of a single hero's performance.
+        * **How to Use:**
+            * **Select a Hero:** Choose any hero from the dropdown menu.
+            * **Performance by Team:** This table shows you every team that has played the selected hero. It helps answer questions like, "Which team has the best record on Fanny?" or "Who plays the most Valentina?"
+            * **Performance Against Opposing Heroes:** This table details the hero's one-on-one performance against every other hero they've faced. It's perfect for understanding specific matchups, such as "What is Chou's win rate when playing against Arlott?"
 
-        - **`⚔️ Head-to-Head`**
-          - **What it is:** A direct comparison tool.
-          - **How to use it:**
-            - **Team vs. Team:** Select two teams to see their direct match history, including the series score. You can also view their most common picks and bans specifically in matches against each other.
-            - **Hero vs. Hero:** Select two heroes to find out how many times they have played on opposing teams and which one has a higher win rate in that matchup.
+        #### `⚔️ Head-to-Head`
+        * **Purpose:** For direct comparisons between two entities.
+        * **How to Use:**
+            * **Team vs. Team:**
+                - Select two teams from the dropdowns.
+                - The dashboard will immediately show their direct match history (e.g., "Team A has a 3-1 record against Team B").
+                - The tables below reveal crucial strategic data: *what did each team prioritize picking and banning when they faced each other?* This is key to understanding their strategic approach to a specific rival.
+            * **Hero vs. Hero:**
+                - Select two heroes.
+                - The dashboard calculates their win rate when they are on opposing teams, directly answering "In a matchup between Hero X and Hero Y, who wins more often?"
 
-        - **`🤝 Synergy & Counter Analysis`**
-          - **What it is:** A tool to find powerful hero combinations and matchups.
-          - **How to use it:**
-            - **Synergy/Anti-Synergy Mode:** Find hero pairs that have the highest (or lowest) win rates when played on the same team.
-            - **Counters Mode:** Select a hero to see which heroes they perform best against (`Counters`) and worst against (`Countered By`).
-            - **Filters:** You can refine your analysis by team, minimum number of games played together, and number of results to show.
-            - **Trending Tabs:** Check the "Trending Up" and "Trending Down" tabs to see which hero duos have improved or declined in performance recently.
+        #### `🤝 Synergy & Counter Analysis`
+        * **Purpose:** To uncover the most and least effective hero pairings and counters.
+        * **How to Use:**
+            * **Analysis Mode:**
+                - **Synergy (Best Pairs):** Finds duos with the highest win rates when on the same team.
+                - **Anti-Synergy (Worst Pairs):** Finds duos with the lowest win rates.
+                - **Counters:** Allows you to select a single hero and see which heroes they are statistically strong against (`Counters`) and weak against (`Countered By`).
+            * **Filters:** Use the filters for **Team** and **Minimum Games Played** to refine the results and ensure statistical significance.
+            * **Trending Tabs:** The **"Trending Up 📈"** and **"Trending Down 📉"** tabs are unique; they compare a duo's performance in the last week versus the week before, highlighting pairs that are rising or falling in the current meta.
 
-        - **`🔮 Playoff Qualification Odds`**
-          - **What it is:** A powerful Monte Carlo simulator for tournament outcomes.
-          - **How to use it:**
-            - This page works best when you load a single, ongoing tournament.
-            - **Standings:** View the current tournament standings based on completed matches.
-            - **What-If Scenarios:** For upcoming matches, you can manually set a winner (e.g., Team A wins 2-0).
-            - **Run Simulation:** The tool runs thousands of simulations of the remaining games to calculate the final probability for each team to land in a specific bracket (e.g., Upper Bracket, Playoffs, Eliminated).
+        #### `🔮 Playoff Qualification Odds`
+        * **Purpose:** A predictive tool to forecast tournament outcomes. **Best used with a single, ongoing tournament loaded.**
+        * **How to Use:**
+            * **Setup:** First, tell the simulator the tournament format (Single Table or Groups). If it's a group stage, assign the teams to their correct groups. The app will remember these settings for next time.
+            * **"What-If" Scenarios:** The tool will display all remaining matches. You can leave them as "Random" or force a specific outcome (e.g., predict that Team A will win 2-0).
+            * **Simulate:** The simulator runs thousands of possibilities for the "Random" matches.
+            * **Results:** The output is a probability table showing each team's chances of finishing in a specific bracket (e.g., 80% chance for Upper Bracket, 15% for Playoffs, 5% for Elimination). This is perfect for tracking a team's journey through a tournament.
 
-        - **`🎯 Drafting Assistant`**
-          - **What it is:** An AI tool that analyzes drafts in real-time.
-          - **How to use it:**
-            - **Live Draft:** Select the Blue and Red teams. As a draft happens live, fill in the picks and bans for each team using the dropdowns.
-            - **Live Analysis:** The AI will continuously update the win probability for each side based on the heroes drafted and the historical performance of the teams.
-            - **AI Suggestions:** Toggle "Show AI Suggestions" to get recommendations for the next best hero to pick or ban.
-            - **Review Past Games:** You can also load any previously played game from your dataset to analyze its draft with the AI.
+        #### `🎯 Drafting Assistant`
+        * **Purpose:** An AI-powered co-pilot for analyzing a live or historical draft.
+        * **How to Use:**
+            * **Setup:** Select the Blue and Red teams and the series format (e.g., Best of 3).
+            * **Drafting:** As a draft unfolds, use the dropdown menus to input the bans and picks for each team in the correct role slots.
+            * **Live Probability:** With each pick/ban, the AI updates two win probability bars: one that considers team history and another that is purely based on the draft composition. It also shows the odds for the final series score (e.g., 2-0 vs 2-1).
+            * **AI Suggestions:** For a live draft, you can toggle **"Show AI Suggestions"**. The AI will recommend the most statistically advantageous hero to either **PICK** for your team or **BAN** from the enemy team based on the current state of the draft.
 
-        - **`👑 Admin Panel`**
-          - **What it is:** The control panel for the AI model.
-          - **How to use it:** After loading a large and recent dataset, you can click **"Train New AI Model"** to update the AI with the latest meta. This ensures its predictions remain accurate.
+        #### `👑 Admin Panel`
+        * **Purpose:** To keep the AI model sharp and up-to-date.
+        * **How to Use:**
+            * After loading a new, large set of tournament data (e.g., from a completed season), navigate to this page.
+            * Click **"Train New AI Model"**. The system will use all the loaded match data to retrain the machine learning model.
+            * **Download & Deploy:** Once training is complete, download the two new model files (`.json` and `.assets`) and upload them to your GitHub repository to make the updated AI live for all users.
     """)
 # --- END SECTION ---
 
