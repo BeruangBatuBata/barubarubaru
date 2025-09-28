@@ -73,10 +73,42 @@ if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matc
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
 
-pooled_matches = st.session_state['pooled_matches']
-played_matches = [match for match in pooled_matches if any(game.get("winner") for game in match.get("match2games", []))]
+# --- Main Page Logic ---
+parsed_matches = st.session_state['parsed_matches']
+selected_stage = "All Stages"
+
+# --- Conditional Stage Filter UI ---
+if len(st.session_state.get('selected_tournaments', [])) == 1:
+    unique_stages = sorted(
+        list(set(m['stage_type'] for m in parsed_matches if 'stage_type' in m)),
+        key=lambda s: min(m['stage_priority'] for m in parsed_matches if m['stage_type'] == s)
+    )
+    
+    if unique_stages:
+        selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
+
+# --- MODIFICATION START: Apply the successful caching pattern ---
+@st.cache_data
+def get_filtered_matches(_all_matches, stage_filter):
+    """Filters matches based on the selected stage, for use in subsequent calculations."""
+    if stage_filter != "All Stages":
+        return [m for m in _all_matches if m.get('stage_type') == stage_filter]
+    return _all_matches
+
+# Get the correctly filtered list of matches
+matches_to_analyze = get_filtered_matches(
+    _all_matches=tuple(parsed_matches),
+    stage_filter=selected_stage
+)
+# --- MODIFICATION END ---
+
+
+# Derive teams and heroes from the correctly filtered match list
+played_matches = [match for match in matches_to_analyze if any(game.get("winner") for game in match.get("match2games", []))]
 all_teams = sorted(list(set(opp.get('name','').strip() for m in played_matches for opp in m.get("match2opponents", []) if opp.get('name'))))
-all_heroes = sorted(list(set(p["champion"] for m in pooled_matches for g in m.get("match2games", []) for o in g.get("opponents", []) for p in o.get("players", []) if isinstance(p, dict) and "champion" in p)))
+all_heroes = sorted(list(set(p["champion"] for m in matches_to_analyze for g in m.get("match2games", []) for o in g.get("opponents", []) for p in o.get("players", []) if isinstance(p, dict) and "champion" in p)))
+
+st.info(f"Displaying Synergy & Counter data for stage: **{selected_stage}**")
 
 # Analysis Controls
 st.subheader("Analysis Controls")
@@ -93,10 +125,10 @@ with col4:
 
 st.markdown("---")
 
+# The rest of the page logic now correctly uses the 'matches_to_analyze' variable
 if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
     find_anti = (analysis_mode == "Anti-Synergy (Worst Pairs)")
     
-    # Hero filtering section
     st.subheader("Hero Filters (Optional)")
     col_hero1, col_hero2 = st.columns(2)
     
@@ -118,7 +150,6 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
         )
         focus_hero2 = None if focus_hero2 == "All Heroes" else focus_hero2
     
-    # Show filtering status
     if focus_hero1 and focus_hero2:
         st.info(f"🎯 Showing stats for **{focus_hero1} + {focus_hero2}** duo only")
     elif focus_hero1:
@@ -126,25 +157,21 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
     elif focus_hero2:
         st.info(f"🎯 Showing all duos containing **{focus_hero2}**")
     
-    # Get results with hero filtering
     df_results = analyze_synergy_combos_enhanced_with_duo(
-        pooled_matches, team_filter, min_games, top_n, find_anti, 
+        matches_to_analyze, team_filter, min_games, top_n, find_anti, 
         focus_hero1, focus_hero2
     )
     
     if df_results.empty:
         st.warning("No hero pairs found matching the selected criteria.")
     else:
-        # Create tabs
         tab1, tab2, tab3 = st.tabs(["Top Synergies", "Trending Up 📈", "Trending Down 📉"])
         
         with tab1:
-            # Display the dataframe
             df_display = df_results.reset_index(drop=True)
             df_display.index += 1
             st.dataframe(df_display, use_container_width=True)
             
-            # Create and display the interactive chart
             title = f"Win Rate of {'Worst' if find_anti else 'Best'} Hero Duos"
             if focus_hero1 and focus_hero2:
                 title = f"{focus_hero1} + {focus_hero2} Performance"
@@ -161,9 +188,7 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
 
         with tab2:
             st.info("📈 Showing hero duos with the biggest win rate improvements compared to last week")
-            
-            # Trending analysis doesn't use hero filters in this implementation
-            df_trending_up = analyze_trending_synergies(pooled_matches, team_filter, min_games, top_n, direction='up')
+            df_trending_up = analyze_trending_synergies(matches_to_analyze, team_filter, min_games, top_n, direction='up')
             
             if df_trending_up.empty:
                 st.warning("No improving hero pairs found. This might be because there's not enough historical data yet.")
@@ -182,8 +207,7 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
 
         with tab3:
             st.info("📉 Showing hero duos with the biggest win rate declines compared to last week")
-            
-            df_trending_down = analyze_trending_synergies(pooled_matches, team_filter, min_games, top_n, direction='down')
+            df_trending_down = analyze_trending_synergies(matches_to_analyze, team_filter, min_games, top_n, direction='down')
             
             if df_trending_down.empty:
                 st.warning("No declining hero pairs found. This might be because there's not enough historical data yet.")
@@ -201,7 +225,6 @@ if analysis_mode in ["Synergy (Best Pairs)", "Anti-Synergy (Worst Pairs)"]:
                     st.plotly_chart(fig, use_container_width=True, key="trending_down_chart", config=config)
 
 elif analysis_mode == "Counters":
-    # Hero selection for counter analysis
     st.subheader("Hero Matchup Analysis")
     
     col1, col2 = st.columns([1, 2])
@@ -218,9 +241,8 @@ elif analysis_mode == "Counters":
         if team_filter != "All Teams":
             st.caption(f"Filtered for team: {team_filter}")
     
-    # Get counter data for selected hero
     counter_data = analyze_hero_counters(
-        pooled_matches, 
+        matches_to_analyze, 
         selected_hero, 
         min_games, 
         team_filter
@@ -232,7 +254,6 @@ elif analysis_mode == "Counters":
     if counters_df.empty and countered_by_df.empty:
         st.warning(f"No significant matchup data found for {selected_hero}. Try lowering the minimum games requirement.")
     else:
-        # Create two columns for the results
         col_left, col_right = st.columns(2)
         
         with col_left:
@@ -240,7 +261,6 @@ elif analysis_mode == "Counters":
             st.caption("Heroes that this hero performs well against (>55% win rate)")
             
             if not counters_df.empty:
-                # Show mini dataframe
                 display_df = counters_df[['Enemy Hero', 'Win Rate (%)', 'Games Against']].head(10)
                 display_df = display_df.rename(columns={'Games Against': 'Games'})
                 st.dataframe(
@@ -250,7 +270,6 @@ elif analysis_mode == "Counters":
                     height=min(350, 35 * len(display_df) + 38)
                 )
                 
-                # Show bar chart
                 fig = create_counter_bars(
                     counters_df.head(8),
                     f"{selected_hero} Wins Against",
@@ -266,7 +285,6 @@ elif analysis_mode == "Counters":
             st.caption("Heroes that perform well against this hero (>55% win rate)")
             
             if not countered_by_df.empty:
-                # Show mini dataframe
                 display_df = countered_by_df[['Enemy Hero', 'Win Rate (%)', 'Games Against']].head(10)
                 display_df = display_df.rename(columns={'Games Against': 'Games'})
                 st.dataframe(
@@ -276,7 +294,6 @@ elif analysis_mode == "Counters":
                     height=min(350, 35 * len(display_df) + 38)
                 )
                 
-                # Show bar chart
                 fig = create_counter_bars(
                     countered_by_df.head(8),
                     f"Heroes That Beat {selected_hero}",
