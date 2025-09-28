@@ -21,13 +21,16 @@ def get_stats_df(_matches_to_analyze, team_filter):
 parsed_matches = st.session_state['parsed_matches']
 selected_stage = "All Stages"
 
+# --- MODIFICATION START: Conditional Stage Filter ---
 # Only show the stage filter if a single tournament is selected
 if len(st.session_state.get('selected_tournaments', [])) == 1:
+    # Create a sorted list of unique stages from the data, using the priority number
     unique_stages = sorted(
         list(set(m['stage_type'] for m in parsed_matches if 'stage_type' in m)),
         key=lambda s: min(m['stage_priority'] for m in parsed_matches if m['stage_type'] == s)
     )
     
+    # If there are stages, create the selectbox
     if unique_stages:
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
 
@@ -35,7 +38,10 @@ if len(st.session_state.get('selected_tournaments', [])) == 1:
 if selected_stage != "All Stages":
     filtered_matches = [m for m in parsed_matches if m.get('stage_type') == selected_stage]
 else:
+    # Otherwise, use all matches
     filtered_matches = parsed_matches
+# --- MODIFICATION END ---
+
 
 # Now, derive the list of teams from the potentially filtered matches
 played_matches = [match for match in filtered_matches if any(game.get("winner") for game in match.get("match2games", []))]
