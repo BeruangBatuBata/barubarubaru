@@ -197,10 +197,18 @@ def single_table_dashboard():
         current_wins[winner] += 1
         
         # It calculates the game score differential (e.g., 2-1 = +1) and updates both teams.
-        s_w, s_l = (m.get("scoreA",0), m.get("scoreB",0)) if winner_idx == 0 else (m.get("scoreB",0), m.get("scoreA",0))
-        current_diff[winner] += s_w - s_l
-        current_diff[loser] += s_l - s_w
-    ### END LOGIC HIGHLIGHT ###
+        score_winner = 0
+        score_loser = 0
+        for game in m.get("match2games", []):
+            # If the overall winner is team 1 (winner_idx=0), then a game winner '1' adds to their score.
+            # If the overall winner is team 2 (winner_idx=1), then a game winner '2' adds to their score.
+            if str(game.get('winner')) == str(winner_idx + 1):
+                score_winner += 1
+            else:
+                score_loser += 1
+        
+        current_diff[winner] += score_winner - score_loser
+        current_diff[loser] += score_loser - score_winner
 
     unplayed_tuples = []
     for m in unplayed:
