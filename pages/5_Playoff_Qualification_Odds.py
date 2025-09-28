@@ -410,7 +410,7 @@ def group_dashboard():
                             if idx + col_idx < len(date_matches):
                                 m = date_matches[idx + col_idx]
                                 teamA, teamB = get_teams_from_match(m); bo = m.get("bestof", 3)
-                                match_key = (teamA, teamB, date)
+                                match_key = (teamA, teamB, m.get('date'))
                                 with col, st.container():
                                     st.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px; background-color: #262730; border-radius: 10px; margin-bottom: 10px;'>{teamA} vs {teamB}</div>", unsafe_allow_html=True)
                                     options = get_series_outcome_options(teamA, teamB, bo)
