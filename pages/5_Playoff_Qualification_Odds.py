@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from collections import defaultdict
-from datetime import datetime 
+from datetime import datetime
 from utils.simulation import (
     get_series_outcome_options, build_standings_table, run_monte_carlo_simulation,
     load_bracket_config, save_bracket_config, build_week_blocks,
@@ -127,18 +127,14 @@ def single_table_dashboard():
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        # --- MODIFICATION START: Prevent RangeError ---
         week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
         week_options["Pre-Season (Week 0)"] = -1
         sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
-        
         if sorted_week_options:
             cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
             cutoff_week_idx = week_options.get(cutoff_week_label, -1)
         else:
-            st.info("No date information available to create week blocks.")
-            cutoff_week_idx = -1
-        # --- MODIFICATION END ---
+            st.info("No date information available to create week blocks."); cutoff_week_idx = -1
     with col2:
         n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="single_sim_count")
     bracket_config_key = f"{tournament_name}_{selected_stage}"
@@ -219,11 +215,14 @@ def group_dashboard():
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
+        # --- MODIFICATION START: Prevent RangeError ---
         if week_blocks:
-            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}"); cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
+            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}")
+            cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
         else:
             st.info("No date information available to create week blocks.")
             cutoff_week_idx = -1
+        # --- MODIFICATION END ---
     with col2:
         n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="group_sim_count")
     bracket_config_key = f"{tournament_name}_{selected_stage}"
