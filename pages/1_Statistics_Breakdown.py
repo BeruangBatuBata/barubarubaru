@@ -28,9 +28,12 @@ if len(st.session_state.get('selected_tournaments', [])) == 1:
         key=lambda s: min(m['stage_priority'] for m in pooled_matches if m['stage_type'] == s)
     )
     
-    if len(unique_stages) > 1:
-        # Create the filter only if there's more than one stage to choose from
+    # --- MODIFICATION START: Always show the filter if there are any stages ---
+    if unique_stages:
+        # Create the filter. It will show one or more stages depending on the tournament.
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
+    # --- MODIFICATION END ---
+
 
 # Filter the matches if a specific stage has been selected
 if selected_stage != "All Stages":
