@@ -162,22 +162,51 @@ else:
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
+# --- Footer ---
 st.markdown("---")
-# --- Liquipedia Credit using Base64 for reliability ---
 liquipedia_logo_base_64 = get_image_as_base_64("Liquipedia_logo.png")
 if liquipedia_logo_base_64:
     st.markdown(f"""
-        <div style="text-align: center; margin-top: 2rem;">
-            <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
-            <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="200">
-            </a>
+        <style>
+            .footer {{
+                font-size: 0.875em;
+                color: #afb8c1;
+                text-align: center;
+                padding: 2rem 1rem;
+            }}
+            .footer a {{
+                color: #4A90E2;
+                text-decoration: none;
+            }}
+            .footer a:hover {{
+                text-decoration: underline;
+            }}
+            .footer-separator {{
+                margin: 0 10px;
+            }}
+        </style>
+        <div class="footer">
+            <p>
+                <strong>Disclaimer:</strong> This is a fan-made project and is not affiliated with Moonton or any official MLBB esports league.
+            </p>
+            <p>
+                Created with ❤️ by <a href="https://github.com/beruangbatubata" target="_blank">Beruang Batu Bata</a>
+                <span class="footer-separator">|</span>
+                <a href="https://github.com/beruangbatubata/barubaru/issues" target="_blank">Report an Issue or Suggest a Feature</a>
+            </p>
+            <div style="margin-top: 1rem;">
+                <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
+                <a href="https://liquipedia.net/mobilelegends" target="_blank">
+                    <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="150">
+                </a>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 else:
     # Fallback if the logo file is missing
-    st.markdown("""
-        <div style="text-align: center; margin-top: 2rem;">
+     st.markdown("""
+        <div style="text-align: center; margin-top: 2rem; font-size: 0.875em; color: #afb8c1;">
             <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
+            <p>Created with ❤️ by Beruang Batu Bata</p>
         </div>
     """, unsafe_allow_html=True)
