@@ -162,7 +162,6 @@ HERO_PROFILES = {
     'Zilong':   [{'build_name': 'Standard', 'primary_role': 'EXP', 'sub_role': ['Fighter', 'Assassin'], 'tags': ['Split Push', 'Pick-off', 'Late Game']}]
 }
 
-# --- HERO DAMAGE TYPE DICTIONARY (Complete) ---
 HERO_DAMAGE_TYPE = {
     'Aamon': ['Magic'], 'Akai': ['Physical'], 'Aldous': ['Physical'], 'Alice': ['Magic'], 'Alpha': ['Physical'],
     'Alucard': ['Physical'], 'Angela': ['Magic'], 'Argus': ['Physical'], 'Arlott': ['Physical'], 'Atlas': ['Magic'],
@@ -200,6 +199,44 @@ TEAM_NORMALIZATION = {
 }
 def normalize_team(n):
     return TEAM_NORMALIZATION.get((n or "").strip(), (n or "").strip())
+
+# --- MODIFICATION START: New function to classify stages ---
+def get_stage_info(pagename, section):
+    """
+    Classifies a match into a stage type and priority based on its pagename and section.
+    Returns: A tuple of (stage_type, stage_priority)
+    """
+    pagename = pagename.lower()
+    section = section.lower()
+
+    # Main Playoffs (Highest Priority)
+    if "playoffs" in section or "playoffs" in pagename or \
+       "finals" in section or "finals" in pagename or \
+       "knockout" in section or "knockouts" in pagename:
+        return "Main Playoffs", 40
+
+    # Mid-Stage Knockouts (e.g., Abyss Rumble)
+    if "rumble" in section or "rumble" in pagename:
+        return "Abyss Rumble", 30
+        
+    # Play-Ins
+    if "play-in" in section or "play-in" in pagename:
+        return "Play-Ins", 30
+
+    # Stage 2 League Play
+    if "stage 2" in pagename or "stage 2" in section:
+        return "League Play - Stage 2", 20
+
+    # Stage 1 / Default League or Group Stage (Lowest Priority)
+    if "regular season" in pagename or "regular" in section or \
+       "group stage" in pagename or "group" in section or \
+       "swiss stage" in pagename or "swiss" in section or \
+       "week" in section or "stage 1" in pagename:
+        return "League Play - Stage 1", 10
+
+    # Fallback for any other case
+    return "Unknown Stage", 99
+# --- MODIFICATION END ---
 
 def parse_matches(matches_raw):
     out=[]
@@ -248,26 +285,9 @@ def parse_matches(matches_raw):
         pagename = m.get("pagename", "")
         section = m.get("section", "")
 
-        is_regular_season = any([
-            section != "Playoffs",
-            "/Stage 1" in pagename,
-            "/Regular_Season" in pagename,
-            "/Group Stage" in pagename,
-            "/Swiss Stage" in pagename,
-            "/Week " in pagename,
-            "Regular" in section,
-            "Week" in section,
-        ])
-
-        is_playoff = any([
-            section == "Playoffs",
-            "/Playoffs" in pagename,
-            "/Finals" in pagename,
-            "/Knockouts" in pagename,
-            "/Elimination" in pagename,
-            "Playoff" in section,
-            "Final" in section,
-        ])
+        # --- MODIFICATION START: Call the new stage function ---
+        stage_type, stage_priority = get_stage_info(pagename, section)
+        # --- MODIFICATION END ---
 
         out.append({
             "date": dt.date(),
@@ -277,12 +297,14 @@ def parse_matches(matches_raw):
             "winner": winner,
             "scoreA": scoreA,
             "scoreB": scoreB,
-            "is_regular_season": is_regular_season,
-            "is_playoff": is_playoff,
             "pagename": pagename,
             "tournament": m.get("tournament", ""),
             "section": section,
-            "match_id": m.get("match2id", m.get("matchid", ""))
+            "match_id": m.get("match2id", m.get("matchid", "")),
+            # --- MODIFICATION START: Add new fields to the data ---
+            "stage_type": stage_type,
+            "stage_priority": stage_priority
+            # --- MODIFICATION END ---
         })
 
     return sorted(out, key=lambda x:x["date"])
