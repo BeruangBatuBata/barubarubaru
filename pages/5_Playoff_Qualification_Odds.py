@@ -41,19 +41,21 @@ if len(st.session_state.get('selected_tournaments', [])) == 1 and len(unique_sta
     )
     st.sidebar.info(f"Simulating for the '{selected_stage}' stage.")
 
+# --- MODIFICATION START: Use new stage_priority system for filtering ---
 if selected_stage:
-    regular_season_matches = [m for m in all_matches_for_tournament if m.get("stage_type") == selected_stage]
+    # If a specific stage is chosen, use only matches from that stage
+    simulation_matches = [m for m in all_matches_for_tournament if m.get("stage_type") == selected_stage]
 else:
-    regular_season_matches = all_matches_for_tournament
+    # If no specific stage is chosen, use all non-playoff stages (priority < 40)
+    simulation_matches = [m for m in all_matches_for_tournament if m.get("stage_priority", 99) < 40]
 
-if not regular_season_matches:
-    st.error(f"No match data found for the selected stage ('{selected_stage}'). Please select another stage.")
+if not simulation_matches:
+    st.error(f"No simulation-eligible matches found for the selected tournament/stage. The simulator only runs on group or regular season stages.")
     st.stop()
 
-# --- MODIFICATION START: Corrected team name extraction ---
 teams = sorted(list(set(
     opp.get('name', '').strip()
-    for m in regular_season_matches
+    for m in simulation_matches
     for opp in m.get("match2opponents", [])
     if opp.get('name')
 )))
@@ -105,17 +107,21 @@ def single_table_dashboard():
     st.header(f"Simulation for {tournament_name} (Single Table)")
     st.button("← Change Tournament Format", on_click=lambda: st.session_state.update(page_view='format_selection'))
     
-    week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in regular_season_matches if "date" in m))))
+    week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in simulation_matches if "date" in m))))
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
-        week_options["Pre-Season (Week 0)"] = -1
-        sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
-        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
-        cutoff_week_idx = week_options[cutoff_week_label]
-    
+        if week_blocks:
+            week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
+            week_options["Pre-Season (Week 0)"] = -1
+            sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
+            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
+            cutoff_week_idx = week_options[cutoff_week_label]
+        else:
+            cutoff_week_idx = -1
+            st.warning("No date information available to create weekly filters.")
+
     with col2:
         n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="single_sim_count")
     
@@ -137,8 +143,8 @@ def single_table_dashboard():
             if st.button("Save Brackets", type="primary", key="s_save_brackets"): save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
                 
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
-    played = [m for m in regular_season_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
-    unplayed = [m for m in regular_season_matches if m not in played]
+    played = [m for m in simulation_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
+    unplayed = [m for m in simulation_matches if m not in played]
 
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
@@ -147,7 +153,7 @@ def single_table_dashboard():
     for match in unplayed:
         if "date" not in match: continue
         for week_idx, week_dates in enumerate(week_blocks):
-            if match['date'] in week_dates: matches_by_week[week_idx].append(match); break
+            if pd.to_datetime(match['date']).date() in week_dates: matches_by_week[week_idx].append(match); break
 
     if not matches_by_week:
         st.info("No upcoming matches to simulate for the selected cutoff week.")
@@ -213,8 +219,15 @@ def single_table_dashboard():
     with col2:
         st.write("**Playoff Probabilities**")
         if sim_results is not None and not sim_results.empty:
-            if 'Team' in standings_df.columns and not standings_df.empty:
-                st.dataframe(sim_results.set_index('Team').loc[standings_df['Team']].reset_index(), use_container_width=True, hide_index=True)
+            if 'Team' in standings_df.columns and not standings_df.empty and len(standings_df['Team']) > 0:
+                # Ensure all teams in standings are in sim_results to avoid KeyError
+                sim_teams = sim_results.set_index('Team')
+                standings_teams = standings_df['Team']
+                teams_to_show = [t for t in standings_teams if t in sim_teams.index]
+                if teams_to_show:
+                    st.dataframe(sim_teams.loc[teams_to_show].reset_index(), use_container_width=True, hide_index=True)
+                else:
+                    st.dataframe(sim_results, use_container_width=True, hide_index=True)
             else:
                 st.dataframe(sim_results, use_container_width=True, hide_index=True)
 
@@ -223,14 +236,19 @@ def group_dashboard():
     st.button("← Change Tournament Format", on_click=lambda: st.session_state.update(page_view='format_selection'))
     
     group_config = st.session_state.group_config; groups = group_config.get('groups', {})
-    week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in regular_season_matches if "date" in m))))
+    week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in simulation_matches if "date" in m))))
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}")
-        cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
-    
+        if week_blocks:
+            week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
+            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=list(week_options.keys()), value=list(week_options.keys())[-1])
+            cutoff_week_idx = week_options[cutoff_week_label]
+        else:
+            cutoff_week_idx = -1
+            st.warning("No date information available to create weekly filters.")
+
     with col2:
         n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="group_sim_count")
     
@@ -262,8 +280,8 @@ def group_dashboard():
                 if st.button("Save Group Changes"): st.session_state.group_config['groups'] = editable_groups; save_group_config(tournament_name, st.session_state.group_config); st.success("Group configuration updated!"); st.cache_data.clear(); st.rerun()
 
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
-    played = [m for m in regular_season_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
-    unplayed = [m for m in regular_season_matches if m not in played]
+    played = [m for m in simulation_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
+    unplayed = [m for m in simulation_matches if m not in played]
     
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
@@ -274,7 +292,7 @@ def group_dashboard():
         for match in unplayed:
             if "date" not in match: continue
             for week_idx, week_dates in enumerate(week_blocks):
-                if match['date'] in week_dates: matches_by_week[week_idx].append(match); break
+                if pd.to_datetime(match['date']).date() in week_dates: matches_by_week[week_idx].append(match); break
         for week_idx in sorted(matches_by_week.keys()):
             week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
             with st.expander(f"📅 {week_label}", expanded=False):
