@@ -21,8 +21,7 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
     st.warning("Please select and load tournament data on the homepage first.")
     st.stop()
 
-# --- MODIFICATION START: NEW STAGE-BASED DATA PREPARATION ---
-
+# --- Global Data Prep ---
 parsed_matches_full = st.session_state['parsed_matches']
 selected_stage = "All Stages"
 matches_to_analyze = []
@@ -42,7 +41,6 @@ if len(st.session_state.get('selected_tournaments', [])) == 1:
             unique_stages,
             help="Select the specific league stage for the simulation."
         )
-        # Filter matches based on the selected stage
         matches_to_analyze = [m for m in parsed_matches_full if m.get('stage_type') == selected_stage]
     else:
         st.warning("No distinct stages found in the data for this tournament.")
@@ -56,7 +54,6 @@ if not matches_to_analyze:
     st.warning(f"No matches found for the selected stage: '{selected_stage}'.")
     st.stop()
 
-# Re-structure matches to the format the simulation functions expect (teamA, teamB, etc.)
 structured_matches = []
 for m in matches_to_analyze:
     if len(m.get("match2opponents", [])) >= 2:
@@ -68,17 +65,14 @@ for m in matches_to_analyze:
             "scoreA": int(teamA_data.get('score', 0)),
             "scoreB": int(teamB_data.get('score', 0)),
             "winner": m.get('winner'),
-            "date": m.get('date'), # Assumes 'date' is present in the raw match data
-            "bestof": m.get('bestof', 3) # Assumes 'bestof' is present
+            "date": m.get('date'),
+            "bestof": m.get('bestof', 3)
         })
 
 teams = sorted(list(set(m["teamA"] for m in structured_matches) | set(m["teamB"] for m in structured_matches)))
 if not teams:
     st.error("Could not determine teams for the selected stage.")
     st.stop()
-
-# --- MODIFICATION END ---
-
 
 # --- Cached Simulation Functions ---
 @st.cache_data(show_spinner="Running single-table simulation...")
@@ -147,13 +141,14 @@ def single_table_dashboard():
             if st.button("Save Brackets", type="primary", key="s_save_brackets"):
                 save_bracket_config(bracket_config_key, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
-    played = [m for m in structured_matches if m["date"] in cutoff_dates and m.get("winner") in ("1", "2")]
+    played = [m for m in structured_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
     unplayed = [m for m in structured_matches if m not in played]
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)"); forced_outcomes = {}
     matches_by_week = defaultdict(list)
     for match in unplayed:
-        for week_idx, week_dates in enumerate(week_blocks):
-            if match['date'] in week_dates: matches_by_week[week_idx].append(match); break
+        if match.get("date"):
+            for week_idx, week_dates in enumerate(week_blocks):
+                if match['date'] in week_dates: matches_by_week[week_idx].append(match); break
     if not matches_by_week: st.info("No upcoming matches to simulate for the selected cutoff week.")
     else:
         for week_idx in sorted(matches_by_week.keys()):
@@ -184,13 +179,13 @@ def single_table_dashboard():
     with col1:
         display_matches = played.copy()
         for m in unplayed:
-            match_key = (m["teamA"], m["teamB"], m["date"]); outcome_code = forced_outcomes.get(match_key)
+            match_key = (m["teamA"], m["teamB"], m.get("date")); outcome_code = forced_outcomes.get(match_key)
             if outcome_code and outcome_code != "random":
                 pm = m.copy()
                 if outcome_code.startswith("A"): pm["winner"] = "1"; pm["scoreA"], pm["scoreB"] = int(outcome_code[1]), int(outcome_code[2])
                 elif outcome_code.startswith("B"): pm["winner"] = "2"; pm["scoreB"], pm["scoreA"] = int(outcome_code[1]), int(outcome_code[2])
                 display_matches.append(pm)
-        has_preds = any(forced_outcomes.get((m["teamA"], m["teamB"], m["date"]), "random") != "random" for m in unplayed)
+        has_preds = any(forced_outcomes.get((m["teamA"], m["teamB"], m.get("date")), "random") != "random" for m in unplayed)
         st.write("**Current Standings (including predictions)**" if has_preds else "**Current Standings**")
         standings_df = build_standings_table(teams, display_matches); st.dataframe(standings_df, use_container_width=True)
     with col2:
@@ -234,11 +229,11 @@ def group_dashboard():
                 if st.button("Save Group Changes"):
                     st.session_state.group_config['groups'] = editable_groups; save_group_config(bracket_config_key, st.session_state.group_config); st.success("Group configuration updated!"); st.cache_data.clear(); st.rerun()
     brackets = st.session_state.current_brackets; cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
-    played = [m for m in structured_matches if m["date"] in cutoff_dates and m.get("winner") in ("1", "2")]; unplayed = [m for m in structured_matches if m not in played]
+    played = [m for m in structured_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]; unplayed = [m for m in structured_matches if m not in played]
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)"); forced_outcomes = {}
     if not unplayed: st.info("No matches left to simulate.")
     else:
-        matches_by_week = defaultdict(list); [matches_by_week[w_idx].append(m) for m in unplayed for w_idx, w_dates in enumerate(week_blocks) if m['date'] in w_dates]
+        matches_by_week = defaultdict(list); [matches_by_week[w_idx].append(m) for m in unplayed if m.get("date") for w_idx, w_dates in enumerate(week_blocks) if m['date'] in w_dates]
         for week_idx in sorted(matches_by_week.keys()):
             week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
             with st.expander(f"📅 {week_label}", expanded=False):
@@ -264,7 +259,7 @@ def group_dashboard():
     sim_results = cached_group_sim(groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple((m["teamA"], m["teamB"], m["date"], m["bestof"]) for m in unplayed), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in brackets), n_sim)
     display_matches = played.copy()
     for m in unplayed:
-        match_key = (m["teamA"], m["teamB"], m["date"]); outcome_code = forced_outcomes.get(match_key)
+        match_key = (m["teamA"], m["teamB"], m.get("date")); outcome_code = forced_outcomes.get(match_key)
         if outcome_code and outcome_code != "random":
             pm = m.copy()
             if outcome_code.startswith("A"): pm["winner"] = "1"; pm["scoreA"], pm["scoreB"] = int(outcome_code[1]), int(outcome_code[2])
@@ -277,9 +272,20 @@ def group_dashboard():
     with result_tabs[0]:
         col1, col2 = st.columns(2)
         with col1:
-            st.write(standings_label); [st.write(f"**{gn}**"), st.dataframe(build_standings_table(g_teams, display_matches), use_container_width=True) for gn, g_teams in sorted(groups.items())]
+            st.write(standings_label)
+            # --- FIX START ---
+            for gn, g_teams in sorted(groups.items()):
+                st.write(f"**{gn}**")
+                st.dataframe(build_standings_table(g_teams, display_matches), use_container_width=True)
+            # --- FIX END ---
         with col2:
-            st.write("**Playoff Probabilities**"); [st.write(f"**{gn}**"), st.dataframe(sim_results[sim_results['Group'] == gn].drop(columns=['Group']), use_container_width=True, hide_index=True) for gn in sorted(groups.keys()) if sim_results is not None and not sim_results.empty]
+            st.write("**Playoff Probabilities**")
+            # --- FIX START ---
+            if sim_results is not None and not sim_results.empty:
+                for gn in sorted(groups.keys()):
+                    st.write(f"**{gn}**")
+                    st.dataframe(sim_results[sim_results['Group'] == gn].drop(columns=['Group']), use_container_width=True, hide_index=True)
+            # --- FIX END ---
     for i, group_name in enumerate(sorted(groups.keys())):
         with result_tabs[i+1]:
             col1, col2 = st.columns(2)
