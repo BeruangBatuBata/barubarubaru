@@ -4,28 +4,28 @@ import itertools
 from datetime import datetime, timedelta
 import streamlit as st
 
-def calculate_hero_stats_for_team(pooled_matches, team_filter="All Teams"):
+def calculate_hero_stats_for_team(matches_to_analyze, team_filter="All Teams"):
     """
-    Calculates hero statistics for a specific team or all teams from a pool of matches.
+    Calculates hero statistics for a specific team or all teams from a given pool of matches.
     """
     stats_data = defaultdict(lambda: {
         "games": 0, "wins": 0, "bans": 0, "blue_picks": 0, "blue_wins": 0,
         "red_picks": 0, "red_wins": 0
     })
 
-    total_games = 0
-    for match in pooled_matches:
-        match_teams = [opp.get('name','').strip() for opp in match.get("match2opponents", [])]
-        is_relevant_match = (team_filter == "All Teams" or team_filter in match_teams)
-        if is_relevant_match:
-            for game in match.get("match2games", []):
-                if game.get("winner") and game.get("opponents") and len(game.get("opponents")) >= 2:
-                    total_games += 1
+    # Calculate total games from the provided match list
+    total_games = sum(len(m.get("match2games", [])) for m in matches_to_analyze if any(g.get("winner") for g in m.get("match2games", [])))
+
     if total_games == 0:
         return pd.DataFrame()
 
-    for match in pooled_matches:
-        match_teams = [opp.get('name','').strip() for opp in match.get("match2opponents", [])]
+    for match in matches_to_analyze:
+        match_teams = [opp.get('name', '') for opp in match.get("match2opponents", [])]
+        
+        # Skip if the match is not relevant to the team filter
+        if team_filter != "All Teams" and team_filter not in match_teams:
+            continue
+
         for game in match.get("match2games", []):
             winner = game.get("winner")
             opponents = game.get("opponents")
@@ -38,12 +38,12 @@ def calculate_hero_stats_for_team(pooled_matches, team_filter="All Teams"):
             is_team1_in_filter = team_filter == "All Teams" or (len(match_teams) > 0 and match_teams[0] == team_filter)
             is_team2_in_filter = team_filter == "All Teams" or (len(match_teams) > 1 and match_teams[1] == team_filter)
             
-            # --- MODIFIED LOGIC ---
-            # Process picks for each team individually
+            # Process picks for each team
             for idx, opp_game_data in enumerate(opponents):
                 is_win = str(idx + 1) == str(winner)
                 side = sides[idx] if idx < len(sides) else ""
                 
+                # Check if this side should be counted
                 if (idx == 0 and is_team1_in_filter) or (idx == 1 and is_team2_in_filter):
                     for p in opp_game_data.get("players", []):
                         if isinstance(p, dict) and "champion" in p:
@@ -57,16 +57,14 @@ def calculate_hero_stats_for_team(pooled_matches, team_filter="All Teams"):
                                 stats_data[hero]["red_picks"] += 1
                                 if is_win: stats_data[hero]["red_wins"] += 1
 
-            # Process bans only once per game to avoid double counting
-            if is_team1_in_filter or is_team2_in_filter:
-                for i in range(1, 6):
-                    if is_team1_in_filter:
-                        banned_hero_1 = extradata.get(f'team1ban{i}')
-                        if banned_hero_1: stats_data[banned_hero_1]["bans"] += 1
-                    if is_team2_in_filter:
-                        banned_hero_2 = extradata.get(f'team2ban{i}')
-                        if banned_hero_2: stats_data[banned_hero_2]["bans"] += 1
-            # --- END MODIFIED LOGIC ---
+            # Process bans
+            for i in range(1, 6):
+                if is_team1_in_filter:
+                    banned_hero_1 = extradata.get(f'team1ban{i}')
+                    if banned_hero_1: stats_data[banned_hero_1]["bans"] += 1
+                if is_team2_in_filter:
+                    banned_hero_2 = extradata.get(f'team2ban{i}')
+                    if banned_hero_2: stats_data[banned_hero_2]["bans"] += 1
 
     df_rows = []
     for hero, stats in stats_data.items():
