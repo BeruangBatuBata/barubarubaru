@@ -117,12 +117,30 @@ def build_standings_table(teams, played_matches):
     df = df.drop(columns=["_MW", "_Diff"]); df.index += 1
     return df
 
-def build_week_blocks(dates):
+def build_week_blocks(dates_str):
+    """Groups dates into week-long blocks."""
+    if not dates_str: return []
+    
+    # Convert string dates to datetime.date objects for comparison
+    dates = []
+    for d_str in dates_str:
+        try:
+            # pd.to_datetime is robust and handles various formats
+            dates.append(pd.to_datetime(d_str).date())
+        except (ValueError, TypeError):
+            continue # Skip if a date string is invalid
+    
     if not dates: return []
+
+    # Sort the converted dates
+    dates = sorted(list(set(dates)))
+
     blocks = [[dates[0]]]
     for prev, curr in zip(dates, dates[1:]):
-        if (curr - prev).days <= 2: blocks[-1].append(curr)
-        else: blocks.append([curr])
+        if (curr - prev).days <= 2:
+            blocks[-1].append(curr)
+        else:
+            blocks.append([curr])
     return blocks
 
 ### --- MODIFIED --- ###
