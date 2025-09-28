@@ -281,8 +281,22 @@ def single_table_dashboard():
             if match_key in forced_outcomes and forced_outcomes[match_key] != "random":
                 outcome_code = forced_outcomes[match_key]
                 predicted_match = m.copy()
-                if outcome_code.startswith("A"): predicted_match["winner"] = "1"; score = outcome_code[1:]; predicted_match["scoreA"], predicted_match["scoreB"] = int(score[0]), int(score[1])
-                elif outcome_code.startswith("B"): predicted_match["winner"] = "2"; score = outcome_code[1:]; predicted_match["scoreB"], predicted_match["scoreA"] = int(score[0]), int(score[1])
+                if outcome_code.startswith("A"):
+                    predicted_match["winner"] = "1"
+                    score_part = outcome_code[1:]
+                    if len(score_part) == 2:
+                        scoreA, scoreB = int(score_part[0]), int(score_part[1])
+                        predicted_match["scoreA"] = scoreA
+                        predicted_match["scoreB"] = scoreB
+                        predicted_match["match2games"] = ([{'winner': '1'}] * scoreA) + ([{'winner': '2'}] * scoreB)
+                elif outcome_code.startswith("B"):
+                    predicted_match["winner"] = "2"
+                    score_part = outcome_code[1:]
+                    if len(score_part) == 2:
+                        scoreB, scoreA = int(score_part[0]), int(score_part[1])
+                        predicted_match["scoreA"] = scoreA
+                        predicted_match["scoreB"] = scoreB
+                        predicted_match["match2games"] = ([{'winner': '1'}] * scoreA) + ([{'winner': '2'}] * scoreB)
                 display_matches.append(predicted_match)
         
         has_predictions = any(forced_outcomes.get((get_teams_from_match(m)[0], get_teams_from_match(m)[1], m.get("date")), "random") != "random" for m in unplayed)
