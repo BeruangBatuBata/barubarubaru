@@ -137,9 +137,15 @@ def single_table_dashboard():
             if st.button("Add Bracket", key="s_add_bracket"): st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)}); st.rerun()
             if st.button("Save Brackets", type="primary", key="s_save_brackets"): save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
                 
-    cutoff_dates = set(pd.to_datetime(m.get("date")).date() for m in simulation_matches if m.get("date"))
-    if week_blocks and cutoff_week_idx >= 0:
+    if cutoff_week_idx == -1:
+        # For "Pre-Season (Week 0)", no dates should be considered played.
+        cutoff_dates = set()
+    elif week_blocks:
+        # For any other week, build the set of dates up to and including that week.
         cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i])
+    else:
+        # Fallback if there are no week_blocks
+        cutoff_dates = set()
 
     played = [m for m in simulation_matches if m.get("winner") in ("1", "2") and m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
     unplayed = [m for m in simulation_matches if m not in played]
