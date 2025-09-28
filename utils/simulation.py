@@ -103,22 +103,54 @@ def build_standings_table(teams, played_matches):
     for m in played_matches:
         opps = m.get("match2opponents", [])
         if len(opps) < 2: continue
-        team_a, team_b = opps[0].get('name'), opps[1].get('name')
-        score_a, score_b = m.get("scoreA", 0), m.get("scoreB", 0)
+        
+        team_a = opps[0].get('name')
+        team_b = opps[1].get('name')
+        
+        if team_a not in teams or team_b not in teams:
+            continue
+            
+        # Calculate game scores by counting wins in the 'match2games' list
+        score_a = 0
+        score_b = 0
+        for game in m.get("match2games", []):
+            if game.get('winner') == '1':
+                score_a += 1
+            elif game.get('winner') == '2':
+                score_b += 1
 
-        if team_a in stats and team_b in stats:
-            stats[team_a]['match_count'] += 1; stats[team_b]['match_count'] += 1
-            stats[team_a]['game_wins'] += score_a; stats[team_a]['game_losses'] += score_b
-            stats[team_b]['game_wins'] += score_b; stats[team_b]['game_losses'] += score_a
-            if m.get("winner") == "1": stats[team_a]['match_wins'] += 1
-            elif m.get("winner") == "2": stats[team_b]['match_wins'] += 1
+        stats[team_a]['match_count'] += 1
+        stats[team_b]['match_count'] += 1
+        stats[team_a]['game_wins'] += score_a
+        stats[team_a]['game_losses'] += score_b
+        stats[team_b]['game_wins'] += score_b
+        stats[team_b]['game_losses'] += score_a
+        
+        if m.get("winner") == "1":
+            stats[team_a]['match_wins'] += 1
+        elif m.get("winner") == "2":
+            stats[team_b]['match_wins'] += 1
+            
     rows = []
     for team, data in stats.items():
-        mw, ml, gw, gl, diff = data['match_wins'], data['match_count'] - data['match_wins'], data['game_wins'], data['game_losses'], data['game_wins'] - data['game_losses']
-        rows.append({"Team": team, "Match W-L": f"{mw}-{ml}", "Game W-L": f"{gw}-{gl}", "Diff": diff, "_MW": mw, "_Diff": diff})
+        if data['match_count'] > 0:
+            mw, ml = data['match_wins'], data['match_count'] - data['match_wins']
+            gw, gl = data['game_wins'], data['game_losses']
+            diff = gw - gl
+            rows.append({
+                "Team": team, 
+                "Match W-L": f"{mw}-{ml}", 
+                "Game W-L": f"{gw}-{gl}", 
+                "Diff": diff, 
+                "_MW": mw, 
+                "_Diff": diff
+            })
+            
     if not rows: return pd.DataFrame()
+    
     df = pd.DataFrame(rows).sort_values(by=["_MW", "_Diff"], ascending=[False, False]).reset_index(drop=True)
-    df = df.drop(columns=["_MW", "_Diff"]); df.index += 1
+    df = df.drop(columns=["_MW", "_Diff"])
+    df.index += 1
     return df
 
 def build_week_blocks(dates_str):
