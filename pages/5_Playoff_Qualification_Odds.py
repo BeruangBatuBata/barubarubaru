@@ -41,12 +41,9 @@ if len(st.session_state.get('selected_tournaments', [])) == 1 and len(unique_sta
     )
     st.sidebar.info(f"Simulating for the '{selected_stage}' stage.")
 
-# --- MODIFICATION START: Use new stage_priority system for filtering ---
 if selected_stage:
-    # If a specific stage is chosen, use only matches from that stage
     simulation_matches = [m for m in all_matches_for_tournament if m.get("stage_type") == selected_stage]
 else:
-    # If no specific stage is chosen, use all non-playoff stages (priority < 40)
     simulation_matches = [m for m in all_matches_for_tournament if m.get("stage_priority", 99) < 40]
 
 if not simulation_matches:
@@ -59,7 +56,6 @@ teams = sorted(list(set(
     for opp in m.get("match2opponents", [])
     if opp.get('name')
 )))
-# --- MODIFICATION END ---
 
 
 # --- Cached Simulation Functions ---
@@ -73,7 +69,6 @@ def cached_group_sim(groups, current_wins, current_diff, unplayed_matches, force
 
 # --- UI Functions ---
 def get_teams_from_match(match):
-    """Helper to safely extract team names."""
     opps = match.get("match2opponents", [])
     teamA = opps[0].get('name', 'Team A') if len(opps) > 0 else 'Team A'
     teamB = opps[1].get('name', 'Team B') if len(opps) > 1 else 'Team B'
@@ -142,8 +137,11 @@ def single_table_dashboard():
             if st.button("Add Bracket", key="s_add_bracket"): st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)}); st.rerun()
             if st.button("Save Brackets", type="primary", key="s_save_brackets"): save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
                 
-    cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
-    played = [m for m in simulation_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
+    cutoff_dates = set(pd.to_datetime(m.get("date")).date() for m in simulation_matches if m.get("date"))
+    if week_blocks and cutoff_week_idx >= 0:
+        cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i])
+
+    played = [m for m in simulation_matches if m.get("winner") in ("1", "2") and m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
     unplayed = [m for m in simulation_matches if m not in played]
 
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
@@ -155,8 +153,10 @@ def single_table_dashboard():
         for week_idx, week_dates in enumerate(week_blocks):
             if pd.to_datetime(match['date']).date() in week_dates: matches_by_week[week_idx].append(match); break
 
-    if not matches_by_week:
-        st.info("No upcoming matches to simulate for the selected cutoff week.")
+    if not unplayed:
+        st.info("No matches left to simulate.")
+    elif not matches_by_week:
+        st.info("No upcoming matches to display for the selected cutoff week.")
     else:
         for week_idx in sorted(matches_by_week.keys()):
             week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
@@ -181,22 +181,33 @@ def single_table_dashboard():
                                         if opt_label == selected: forced_outcomes[match_key] = opt_code; break
                     st.markdown("---")
 
+    ### LOGIC HIGHLIGHT ###
+    # This is the section that processes the results of completed matches.
+    # It initializes empty counters for wins and score differences.
     current_wins, current_diff = defaultdict(int), defaultdict(int)
+
+    # It then loops through only the 'played' matches.
     for m in played:
+        # It gets the team names and determines the winner and loser.
         teamA, teamB = get_teams_from_match(m)
         winner_idx = int(m["winner"]) - 1
         winner, loser = (teamA, teamB) if winner_idx == 0 else (teamB, teamA)
+
+        # It adds 1 to the winner's match win count.
         current_wins[winner] += 1
+        
+        # It calculates the game score differential (e.g., 2-1 = +1) and updates both teams.
         s_w, s_l = (m.get("scoreA",0), m.get("scoreB",0)) if winner_idx == 0 else (m.get("scoreB",0), m.get("scoreA",0))
         current_diff[winner] += s_w - s_l
         current_diff[loser] += s_l - s_w
+    ### END LOGIC HIGHLIGHT ###
 
     unplayed_tuples = []
     for m in unplayed:
         teamA, teamB = get_teams_from_match(m)
         unplayed_tuples.append((teamA, teamB, m.get("date"), m.get("bestof", 3)))
 
-    sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)
+    sim_results = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), tuple(frozet(b.items()) for b in st.session_state.current_brackets), n_sim)
     
     st.markdown("---"); st.subheader("Results")
     col1, col2 = st.columns(2)
@@ -220,7 +231,6 @@ def single_table_dashboard():
         st.write("**Playoff Probabilities**")
         if sim_results is not None and not sim_results.empty:
             if 'Team' in standings_df.columns and not standings_df.empty and len(standings_df['Team']) > 0:
-                # Ensure all teams in standings are in sim_results to avoid KeyError
                 sim_teams = sim_results.set_index('Team')
                 standings_teams = standings_df['Team']
                 teams_to_show = [t for t in standings_teams if t in sim_teams.index]
@@ -280,7 +290,7 @@ def group_dashboard():
                 if st.button("Save Group Changes"): st.session_state.group_config['groups'] = editable_groups; save_group_config(tournament_name, st.session_state.group_config); st.success("Group configuration updated!"); st.cache_data.clear(); st.rerun()
 
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
-    played = [m for m in simulation_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
+    played = [m for m in simulation_matches if m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates and m.get("winner") in ("1", "2")]
     unplayed = [m for m in simulation_matches if m not in played]
     
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
