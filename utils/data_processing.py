@@ -203,39 +203,39 @@ def normalize_team(n):
 # --- MODIFICATION START: New function to classify stages ---
 def get_stage_info(pagename, section):
     """
-    Classifies a match into a stage type and priority based on its pagename and section.
+    Classifies a match and derives a clean stage name from pagename or section.
     Returns: A tuple of (stage_type, stage_priority)
     """
-    pagename = pagename.lower()
-    section = section.lower()
+    # Prefer the 'section' field if it's structured like a path
+    source_string = section
+    if '/' not in source_string:
+        source_string = pagename  # Fallback to pagename
 
-    # Main Playoffs (Highest Priority)
-    if "playoffs" in section or "playoffs" in pagename or \
-       "finals" in section or "finals" in pagename or \
-       "knockout" in section or "knockouts" in pagename:
-        return "Main Playoffs", 40
+    # Extract the last part of the path and clean it up
+    if '/' in source_string:
+        stage_type = source_string.split('/')[-1].replace('_', ' ').strip()
+    else:
+        # If no slashes, use the original string but clean it
+        stage_type = source_string.replace('_', ' ').strip()
 
-    # Mid-Stage Knockouts (e.g., Abyss Rumble)
-    if "rumble" in section or "rumble" in pagename:
-        return "Abyss Rumble", 30
-        
-    # Play-Ins
-    if "play-in" in section or "play-in" in pagename:
-        return "Play-Ins", 30
+    # Determine priority based on keywords in the derived stage_type
+    stage_type_lower = stage_type.lower()
+    
+    stage_priority = 99 # Default priority
+    if "playoffs" in stage_type_lower or "finals" in stage_type_lower or "knockout" in stage_type_lower:
+        stage_priority = 40
+    elif "rumble" in stage_type_lower or "play-in" in stage_type_lower:
+        stage_priority = 30
+    elif "stage 2" in stage_type_lower:
+        stage_priority = 20
+    elif "regular season" in stage_type_lower or "group" in stage_type_lower or "swiss" in stage_type_lower or "week" in stage_type_lower or "stage 1" in stage_type_lower:
+        stage_priority = 10
+    
+    # If stage_type is empty after all that, provide a fallback name
+    if not stage_type:
+        stage_type = "Uncategorized"
 
-    # Stage 2 League Play
-    if "stage 2" in pagename or "stage 2" in section:
-        return "League Play - Stage 2", 20
-
-    # Stage 1 / Default League or Group Stage (Lowest Priority)
-    if "regular season" in pagename or "regular" in section or \
-       "group stage" in pagename or "group" in section or \
-       "swiss stage" in pagename or "swiss" in section or \
-       "week" in section or "stage 1" in pagename:
-        return "League Play - Stage 1", 10
-
-    # Fallback for any other case
-    return "Unknown Stage", 99
+    return stage_type, stage_priority
 # --- MODIFICATION END ---
 
 def parse_matches(matches_raw):
