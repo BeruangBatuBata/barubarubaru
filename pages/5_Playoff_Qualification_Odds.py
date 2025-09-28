@@ -168,10 +168,16 @@ def single_table_dashboard():
             week_label = f"Week {week_idx + 1}: {week_blocks[week_idx][0]} — {week_blocks[week_idx][-1]}"
             with st.expander(f"📅 {week_label}", expanded=False):
                 matches_by_date = defaultdict(list)
-                for m in matches_by_week[week_idx]: matches_by_date[m['date']].append(m)
-                for date in sorted(matches_by_date.keys()):
-                    st.markdown(f"#### 📅 {date}")
-                    date_matches = matches_by_date[date]
+                for m in matches_by_week[week_idx]:
+                    try:
+                        date_key = pd.to_datetime(m['date']).strftime('%Y-%m-%d')
+                        matches_by_date[date_key].append(m)
+                    except (ValueError, TypeError):
+                        continue
+                
+                for date_key in sorted(matches_by_date.keys()):
+                    st.markdown(f"#### 📅 {date_key}")
+                    date_matches = matches_by_date[date_key]
                     for idx in range(0, len(date_matches), 3):
                         cols = st.columns(3)
                         for col_idx, col in enumerate(cols):
