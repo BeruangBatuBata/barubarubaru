@@ -47,20 +47,34 @@ else:
     # Fallback if the logo is missing
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
+# --- HOW TO USE SECTION ---
+with st.expander("ℹ️ How to Use This Dashboard", expanded=True):
+    st.markdown("""
+        Welcome to the MLBB Pro-Scene Analytics Dashboard! Here’s a quick guide to get you started:
+
+        ### 1. Loading Data (The First Step!)
+        - In the sidebar on the left, you'll see a **"Tournament Selection"** area.
+        - Click to expand it and choose one or more tournaments you want to analyze. You can select by Region, Split, or League.
+        - Once you've made your selections, click the **"Load Data"** button at the bottom of the sidebar.
+        - The app will then fetch all the match data for the selected tournaments. You'll see a success message below when it's done.
+
+        ### 2. Exploring the Features
+        Once data is loaded, you can navigate to any of the pages to explore different insights:
+
+        - **📊 Statistics Breakdown:** View hero pick/ban/win rates, filterable by team and tournament stage.
+        - **🔎 Hero Detail Drilldown:** Deep dive into a hero's performance by team and against specific opponents.
+        - **⚔️ Head-to-Head:** Compare two teams directly or see how two heroes perform against each other.
+        - **🤝 Synergy & Counter Analysis:** Discover the best and worst performing hero duos.
+        - **🔮 Playoff Qualification Odds:** Run simulations to predict tournament outcomes and test "what-if" scenarios.
+        - **🎯 Drafting Assistant:** Get live, AI-powered draft recommendations and win probability analysis.
+        - **👑 Admin Panel:** Re-train the AI model with the latest data you've selected.
+    """)
+# --- END SECTION ---
+
 
 # --- State 1: Before Data is Loaded ---
 if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
     st.info("Please select tournaments in the sidebar and click 'Load Data' to begin.")
-    st.header("Explore the Tools")
-    st.markdown("""
-    - **📊 Statistics Breakdown:** Analyze hero pick, ban, and win rates.
-    - **🔎 Hero Detail Drilldown:** Deep dive into a specific hero's performance.
-    - **⚔️ Head-to-Head:** Compare teams or heroes directly.
-    - **🤝 Synergy & Counter Analysis:** Discover the best and worst hero pairings.
-    - **🔮 Playoff Qualification Odds:** Run simulations to predict tournament outcomes.
-    - **🎯 Drafting Assistant:** Get live, AI-powered draft recommendations.
-    - **👑 Admin Panel:** Re-train the AI model with your selected data.
-    """)
 
 # --- State 2: After Data is Loaded ---
 else:
