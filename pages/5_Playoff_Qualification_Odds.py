@@ -315,7 +315,9 @@ def group_dashboard():
     with col1:
         if week_blocks:
             week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
-            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=list(week_options.keys()), value=list(week_options.keys())[-1])
+            week_options["Pre-Season (Week 0)"] = -1
+            sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
+            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0], key="group_week_slider")
             cutoff_week_idx = week_options[cutoff_week_label]
         else:
             cutoff_week_idx = -1
@@ -353,7 +355,17 @@ def group_dashboard():
 
     cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
     played = [m for m in simulation_matches if m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates and m.get("winner") in ("1", "2")]
-    unplayed = [m for m in simulation_matches if m not in played]
+    unplayed = [m for m in simulation_matches if m.get("winner") not in ("1", "2")]
+    all_played_matches = [m for m in simulation_matches if m.get("winner") in ("1", "2")]
+
+    if cutoff_week_idx == -1:
+        cutoff_dates = set()
+    elif week_blocks:
+         cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i])
+    else:
+         cutoff_dates = set()
+    
+    played = [m for m in all_played_matches if m.get("date") and pd.to_datetime(m.get("date")).date() in cutoff_dates]
     
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
