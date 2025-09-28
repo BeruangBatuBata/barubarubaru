@@ -162,42 +162,64 @@ else:
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
-# --- Footer ---
+# --- Enhanced Footer ---
 st.markdown("---")
+
+# --- SVG Icons (encoded in Base64 for reliability) ---
+github_icon_svg = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNhZmI4YzEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAxOWMtNSAxLjUtNS0yLjUtNy0zbTE0IDZ2LTMuODdhMy4zNyAzLjM3IDAgMCAwLS45NC0yLjYxYzMuMTQtLjM1IDYuNDQtMS41NCA2LjQ0LTdBN S40NCA1LjQ0IDAgMCAwIDIwIDQuNzcgNS4wNyA1LjA3IDAgMCAwIDE5LjkxIDEgUzE4LjczLjY1IDE2IDIuNDhhMTMuMzggMTMuMzggMCAwIDAtNyAwQzYuMjcuNjUgNS4wOSAxIDUuMDkgMUE1LjA3IDUuMDcgMCAwIDAgNSA0Ljc3YTUuNDQgNS40NCAwIDAgMC0xLjUgMy43OGMwIDUuNDIgMy4zIDYuNjEgNi40NCA3QTMuMzcgMy4zNyAwIDAgMCA5IDE4LjEzVjIyIj48L3BhdGg+PC9zdmc+"
+mail_icon_svg = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNhZmI4YzEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJN넉TQoMTZjMS4xIDAgMiAuOSAyIDJ2MTJjMCAxLjEtLjkgMi0yIDJINC4xYy0xLjEgMC0yLS45LTItMlY2YzAtMS4xLjktMiAyLTJ6Ij48L3BhdGg+PHBvbHlsaW5lIHBvaW50cz0iMjIsNiAxMiwxMyAyLDYiPjwvcG9seWxpbmU+PC9zdmc+"
+
 liquipedia_logo_base_64 = get_image_as_base_64("Liquipedia_logo.png")
+
+# --- Footer Layout ---
 if liquipedia_logo_base_64:
     st.markdown(f"""
         <style>
-            .footer {{
-                font-size: 0.875em;
-                color: #afb8c1;
-                text-align: center;
+            .footer-container {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 padding: 2rem 1rem;
+                color: #afb8c1;
+                font-size: 0.875em;
             }}
-            .footer a {{
-                color: #4A90E2;
-                text-decoration: none;
+            .footer-left {{
+                text-align: left;
             }}
-            .footer a:hover {{
-                text-decoration: underline;
+            .footer-right {{
+                text-align: right;
             }}
-            .footer-separator {{
-                margin: 0 10px;
+            .footer-icon-link a {{
+                margin: 0 0.5rem;
+                opacity: 0.7;
+                transition: opacity 0.2s ease-in-out;
+            }}
+            .footer-icon-link a:hover {{
+                opacity: 1;
+            }}
+            .footer-disclaimer {{
+                font-style: italic;
+                font-size: 0.9em;
+                margin-bottom: 0.5rem;
             }}
         </style>
-        <div class="footer">
-            <p>
-                <strong>Disclaimer:</strong> This is a fan-made project and is not affiliated with Moonton or any official MLBB esports league.
-            </p>
-            <p>
-                Created with ❤️ by <a href="https://github.com/beruangbatubata" target="_blank">Beruang Batu Bata</a>
-                <span class="footer-separator">|</span>
-                <a href="https://github.com/beruangbatubata/barubaru/issues" target="_blank">Report an Issue or Suggest a Feature</a>
-            </p>
-            <div style="margin-top: 1rem;">
-                <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
+        <div class="footer-container">
+            <div class="footer-left">
+                <div>Crafted by <strong>Beruang Batu Bata</strong> | Version 1.0</div>
+                <div class="footer-icon-link">
+                    <a href="https://github.com/beruangbatubata/barubaru" target="_blank" title="GitHub Repository">
+                        <img src="data:image/svg+xml;base64,{github_icon_svg}" width="20">
+                    </a>
+                    <a href="https://github.com/beruangbatubata/barubaru/issues" target="_blank" title="Report an Issue">
+                        <img src="data:image/svg+xml;base64,{mail_icon_svg}" width="20">
+                    </a>
+                </div>
+            </div>
+            <div class="footer-right">
+                <div class="footer-disclaimer">Not affiliated with Moonton.</div>
+                <div>Data Sourced From</div>
                 <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                    <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="150">
+                    <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="120">
                 </a>
             </div>
         </div>
