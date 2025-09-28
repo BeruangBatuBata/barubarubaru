@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from collections import defaultdict
+from datetime import datetime # MODIFICATION: Import datetime
 from utils.simulation import (
     get_series_outcome_options, build_standings_table, run_monte_carlo_simulation,
     load_bracket_config, save_bracket_config, build_week_blocks,
@@ -54,20 +55,35 @@ if not matches_to_analyze:
     st.warning(f"No matches found for the selected stage: '{selected_stage}'.")
     st.stop()
 
+# --- MODIFICATION START: Convert date strings to datetime objects ---
 structured_matches = []
 for m in matches_to_analyze:
     if len(m.get("match2opponents", [])) >= 2:
         teamA_data = m["match2opponents"][0]
         teamB_data = m["match2opponents"][1]
+        
+        # Safely parse the date string
+        match_date = None
+        date_str = m.get('date')
+        if date_str:
+            try:
+                # Assuming date format is YYYY-MM-DD
+                match_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                # If parsing fails, leave it as None. The app will handle it.
+                pass
+
         structured_matches.append({
             "teamA": teamA_data.get('name', '').strip(),
             "teamB": teamB_data.get('name', '').strip(),
             "scoreA": int(teamA_data.get('score', 0)),
             "scoreB": int(teamB_data.get('score', 0)),
             "winner": m.get('winner'),
-            "date": m.get('date'),
+            "date": match_date, # Now a datetime object or None
             "bestof": m.get('bestof', 3)
         })
+# --- MODIFICATION END ---
+
 
 teams = sorted(list(set(m["teamA"] for m in structured_matches) | set(m["teamB"] for m in structured_matches)))
 if not teams:
@@ -119,8 +135,8 @@ def single_table_dashboard():
         week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
         week_options["Pre-Season (Week 0)"] = -1
         sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
-        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
-        cutoff_week_idx = week_options[cutoff_week_label]
+        cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0] if sorted_week_options else "Pre-Season (Week 0)")
+        cutoff_week_idx = week_options.get(cutoff_week_label, -1)
     with col2:
         n_sim = st.number_input("Number of Simulations:", 1000, 100000, 10000, 1000, key="single_sim_count")
     bracket_config_key = f"{tournament_name}_{selected_stage}"
@@ -140,7 +156,7 @@ def single_table_dashboard():
             if st.button("Add Bracket", key="s_add_bracket"): st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)}); st.rerun()
             if st.button("Save Brackets", type="primary", key="s_save_brackets"):
                 save_bracket_config(bracket_config_key, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
-    cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
+    cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
     played = [m for m in structured_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]
     unplayed = [m for m in structured_matches if m not in played]
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)"); forced_outcomes = {}
@@ -228,7 +244,7 @@ def group_dashboard():
                     editable_groups[group_name] = st.multiselect(f"Teams in {group_name}", options=teams, default=group_teams, key=f"edit_group_{group_name}")
                 if st.button("Save Group Changes"):
                     st.session_state.group_config['groups'] = editable_groups; save_group_config(bracket_config_key, st.session_state.group_config); st.success("Group configuration updated!"); st.cache_data.clear(); st.rerun()
-    brackets = st.session_state.current_brackets; cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 else set()
+    brackets = st.session_state.current_brackets; cutoff_dates = set(d for i in range(cutoff_week_idx + 1) for d in week_blocks[i]) if cutoff_week_idx >= 0 and week_blocks else set()
     played = [m for m in structured_matches if m.get("date") in cutoff_dates and m.get("winner") in ("1", "2")]; unplayed = [m for m in structured_matches if m not in played]
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)"); forced_outcomes = {}
     if not unplayed: st.info("No matches left to simulate.")
@@ -273,19 +289,15 @@ def group_dashboard():
         col1, col2 = st.columns(2)
         with col1:
             st.write(standings_label)
-            # --- FIX START ---
             for gn, g_teams in sorted(groups.items()):
                 st.write(f"**{gn}**")
                 st.dataframe(build_standings_table(g_teams, display_matches), use_container_width=True)
-            # --- FIX END ---
         with col2:
             st.write("**Playoff Probabilities**")
-            # --- FIX START ---
             if sim_results is not None and not sim_results.empty:
                 for gn in sorted(groups.keys()):
                     st.write(f"**{gn}**")
                     st.dataframe(sim_results[sim_results['Group'] == gn].drop(columns=['Group']), use_container_width=True, hide_index=True)
-            # --- FIX END ---
     for i, group_name in enumerate(sorted(groups.keys())):
         with result_tabs[i+1]:
             col1, col2 = st.columns(2)
