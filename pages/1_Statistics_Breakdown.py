@@ -19,20 +19,27 @@ def get_stats_df(_pooled_matches, team_filter):
 # --- MODIFICATION START: Logic to handle stage filtering ---
 pooled_matches = st.session_state['pooled_matches']
 selected_stage = "All Stages"
+num_selected_tournaments = len(st.session_state.get('selected_tournaments', []))
+
+# --- DEBUGGING START ---
+st.write(f"DEBUG: Number of tournaments selected: **{num_selected_tournaments}**")
+# --- DEBUGGING END ---
 
 # Only show the stage filter if a single tournament is selected
-if len(st.session_state.get('selected_tournaments', [])) == 1:
+if num_selected_tournaments == 1:
     # Get unique, sorted stages from the loaded data
     unique_stages = sorted(
         list(set(m['stage_type'] for m in pooled_matches if 'stage_type' in m)),
         key=lambda s: min(m['stage_priority'] for m in pooled_matches if m['stage_type'] == s)
     )
     
-    # --- MODIFICATION START: Always show the filter if there are any stages ---
+    # --- DEBUGGING START ---
+    st.write(f"DEBUG: Unique stages found: **{unique_stages}**")
+    # --- DEBUGGING END ---
+
     if unique_stages:
         # Create the filter. It will show one or more stages depending on the tournament.
         selected_stage = st.selectbox("Filter by Stage:", ["All Stages"] + unique_stages)
-    # --- MODIFICATION END ---
 
 
 # Filter the matches if a specific stage has been selected
