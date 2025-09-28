@@ -130,7 +130,7 @@ def single_table_dashboard():
         week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
         week_options["Pre-Season (Week 0)"] = -1
         sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
-        if sorted_week_options:
+        if sorted_week_options and len(sorted_week_options) > 1:
             cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
             cutoff_week_idx = week_options.get(cutoff_week_label, -1)
         else:
@@ -216,8 +216,10 @@ def group_dashboard():
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         if week_blocks:
-            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[f"Week {i+1}" for i in range(len(week_blocks))], value=f"Week {len(week_blocks)}")
-            cutoff_week_idx = int(cutoff_week_label.split(" ")[1]) - 1
+            week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
+            sorted_week_options = sorted(week_options.keys(), key=lambda k: week_options[k])
+            cutoff_week_label = st.select_slider("Select Cutoff Week:", options=sorted_week_options, value=sorted_week_options[-1])
+            cutoff_week_idx = week_options[cutoff_week_label]
         else:
             st.info("No date information available to create week blocks."); cutoff_week_idx = -1
     with col2:
