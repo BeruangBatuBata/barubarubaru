@@ -1,0 +1,17 @@
+ALL_TOURNAMENTS = {
+    'MPL ID Season 14': {'path': 'MPL/Indonesia/Season_14', 'region': 'Indonesia', 'year': 2024, 'live': False, 'league': 'MPL Indonesia', 'split': '2024 Split 2'},
+    'MPL PH Season 13': {'path': 'MPL/Philippines/Season_13', 'region': 'Philippines', 'year': 2024, 'live': False, 'league': 'MPL Philippines', 'split': '2024 Split 1'},
+    'MSC 2024': {'path': 'MSC/2024', 'region': 'International', 'year': 2024, 'live': False, 'league': 'MSC (Mid-Season Cup)', 'split': '2024 Split 2'},
+    'MPL ID Season 15': {'path': 'MPL/Indonesia/Season_15', 'region': 'Indonesia', 'year': 2025, 'live': False, 'league': 'MPL Indonesia', 'split': '2025 Split 1'},
+    'MPL PH Season 15': {'path': 'MPL/Philippines/Season_15', 'region': 'Philippines', 'year': 2025, 'live': False, 'league': 'MPL Philippines', 'split': '2025 Split 1'},
+    'MPL ID Season 16': {'path': 'MPL/Indonesia/Season_16', 'region': 'Indonesia', 'year': 2025, 'live': True, 'league': 'MPL Indonesia', 'split': '2025 Split 2'},
+    'MPL PH Season 16': {'path': 'MPL/Philippines/Season_16', 'region': 'Philippines', 'year': 2025, 'live': True, 'league': 'MPL Philippines', 'split': '2025 Split 2'},
+    'MPL MY Season 16': {'path': 'MPL/Malaysia/Season_16', 'region': 'Malaysia', 'year': 2025, 'live': True, 'league': 'MPL Malaysia', 'split': '2025 Split 2'},
+    'VMC 2025 Winter': {'path': 'Vietnam_MLBB_Championship/2025/Winter', 'region': 'Vietnam', 'year': 2025, 'live': True, 'league': 'VMC (Vietnam)', 'split': '2025 Split 1'},
+    'MPL MENA S8': {'path': 'MPL/MENA/Season_8', 'region': 'MENA', 'year': 2025, 'live': True, 'league': 'MPL MENA', 'split': '2025 Split 2'},
+    'MCC S6': {'path': 'MLBB_Continental_Championships/Season_6', 'region': 'EECA', 'year': 2025, 'live': True, 'league': 'MCC (EECA)', 'split': '2025 Split 2'},
+    'China Masters 2025': {'path': 'MLBB_China_Masters/2025', 'region': 'China', 'year': 2025, 'live': True, 'league': 'China Masters', 'split': '2025 Split 2'},
+    'MTC S6': {'path': 'MTC_Turkiye_Championship/Season_6', 'region': 'Turkey', 'year': 2025, 'live': True, 'league': 'MTC (Turkey)', 'split': '2025 Split 1'},
+    'MPL KH Season 9': {'path': 'MPL/Cambodia/Season_9', 'region': 'Cambodia', 'year': 2025, 'live': True, 'league': 'MPL Cambodia', 'split': '2025 Split 1'},
+    'MSL MM Season 2': {'path': 'MLBB_Super_League/Season_2', 'region': 'Myanmar', 'year': 2025, 'live': True, 'league': 'MSL Myanmar', 'split': '2025 Split 1'},
+}
