@@ -5,7 +5,7 @@ import json
 import xgboost as xgb
 import numpy as np
 from collections import defaultdict
-from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
+from utils.hero_data import HERO_PROFILES, HERO_DAMAGE_TYPE
 
 def train_and_save_prediction_model(matches, hero_profiles, hero_damage_type, model_filename='draft_predictor.json', assets_filename='draft_assets.json'):
     """
