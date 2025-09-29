@@ -48,7 +48,7 @@ else:
     st.title("MLBB Pro-Scene Analytics Dashboard")
 
 # --- HOW TO USE SECTION (MOST DETAILED) ---
-with st.expander("ℹ️ How to Use This Dashboard: A Detailed Guide", expanded=True):
+with st.expander("ℹ️ How to Use This Dashboard: A Detailed Guide", expanded=false):
     st.markdown("""
         Welcome to your advanced analytics suite for professional MLBB! This guide will walk you through each feature step-by-step.
 
