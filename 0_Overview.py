@@ -162,84 +162,25 @@ else:
     else:
         st.warning("Not enough completed match data to generate a meta snapshot.")
 
-# --- Final, Polished Footer ---
+# --- Footer with License Attribution ---
 st.markdown("---")
-
-# --- SVG Icons (encoded in Base64 for reliability) ---
-github_icon_svg = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNhZmI4YzEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAxOWMtNSAxLjUtNS0yLjUtNy0zbTE0IDZ2LTMuODdhMy4zNyAzLjM3IDAgMCAwLS45NC0yLjYxYzMuMTQtLjM1IDYuNDQtMS41NCA2LjQ0LTdBN S40NCA1LjQ0IDAgMCAwIDIwIDQuNzcgNS4wNyA1LjA3IDAgMCAwIDE5LjkxIDEgUzE4LjczLjY1IDE2IDIuNDhhMTMuMzggMTMuMzggMCAwIDAtNyAwQzYuMjcuNjUgNS4wOSAxIDUuMDkgMUE1LjA3IDUuMDcgMCAwIDAgNSA0Ljc3YTUuNDQgNS40NCAwIDAgMC0xLjUgMy43OGMwIDUuNDIgMy4zIDYuNjEgNi40NCA3QTMuMzcgMy4zNyAwIDAgMCA5IDE4LjEzVjIyIj48L3BhdGg+PC9zdmc+"
-bug_icon_svg = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNhZmI4YzEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgOSAxNiAxM3Y0YTQgNCAwIDAgMS00IDRIMjhBNCA0IDAgMCAxIDQgMTd2LTRMMCA5Ij48L3BhdGg+PHBhdGggZD0iTTggNmE0IDQgMCAxIDEgOCAwIj48L3BhdGg+PGxpbmUgeDE9IjEyIiB4Mj0iMTIiIHkxPSIyMCIgeTI9IjI0Ij48L2xpbmU+PGxpbmUgeDE9IjgiIHgyPSI2IiB5MT0iMTMiIHkyPSIxNSI+PC9saW5lPjxsaW5lIHgxPSIxNiIgeDI9IjE4IiB5MT0iMTMiIHkyPSIxNSI+PC9saW5lPjxsaW5lIHgxPSIxMiIgeDI9IjEyIiB5MT0iOCIgeTI9IjEzIj48L2xpbmU+PGxpbmUgeDE9IjQiIHgyPSIyIiB5MT0iNyIgeTI9IjEiPjwvbGluZT48bGluZSB4MT0iMjAiIHgyPSIyMiIgeTE9IjciIHkyPSIxIj48L2xpbmU+PC9zdmc+"
-
 liquipedia_logo_base_64 = get_image_as_base_64("Liquipedia_logo.png")
-
 if liquipedia_logo_base_64:
     st.markdown(f"""
-        <style>
-            .footer-wrapper {{
-                padding: 2.5rem 1rem 1.5rem 1rem;
-                background-color: #262730;
-                border-top: 1px solid #3a3b44;
-                color: #afb8c1;
-                text-align: center;
-            }}
-            .footer-wrapper a {{
-                color: #4A90E2;
-                text-decoration: none;
-                font-weight: 500;
-            }}
-            .footer-wrapper a:hover {{
-                text-decoration: underline;
-            }}
-            .footer-credits {{
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 1rem;
-                margin-bottom: 1rem;
-            }}
-            .footer-credits .separator {{
-                color: #555;
-            }}
-            .footer-disclaimer {{
-                font-size: 0.8em;
-                font-style: italic;
-                margin-bottom: 1.5rem;
-            }}
-            .footer-icon {{
-                vertical-align: middle;
-                margin-right: 0.3rem;
-                opacity: 0.8;
-            }}
-        </style>
-        <div class="footer-wrapper">
-            <div class="footer-disclaimer">
-                This is a fan-made project and is not affiliated with Moonton or any official MLBB esports league.
-            </div>
-            <div class="footer-credits">
-                <span>
-                    <img src="data:image/svg+xml;base64,{github_icon_svg}" width="16" class="footer-icon">
-                    Created by <a href="https://github.com/beruangbatubata" target="_blank">Beruang Batu Bata</a>
-                </span>
-                <span class="separator">|</span>
-                <span>
-                    <img src="data:image/svg+xml;base64,{bug_icon_svg}" width="16" class="footer-icon">
-                    <a href="https://github.com/beruangbatubata/barubaru/issues" target="_blank">Report an Issue</a>
-                </span>
-                <span class="separator">|</span>
-                <span>Version 1.0</span>
-            </div>
-            <div>
-                <p style="margin-bottom: 0.5rem;">Data Sourced From</p>
-                <a href="https://liquipedia.net/mobilelegends" target="_blank">
-                    <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="140">
-                </a>
-            </div>
+        <div style="text-align: center; margin-top: 2rem; font-size: 0.9em; color: #afb8c1;">
+            <p>
+                Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a> and licensed under 
+                <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank">CC BY-SA 3.0</a>.
+            </p>
+            <a href="https://liquipedia.net/mobilelegends" target="_blank">
+                <img src="data:image/png;base64,{liquipedia_logo_base_64}" width="150" style="margin-top: 0.5rem;">
+            </a>
         </div>
     """, unsafe_allow_html=True)
 else:
     # Fallback if the logo file is missing
-     st.markdown("""
-        <div style="text-align: center; margin-top: 2rem; font-size: 0.875em; color: #afb8c1;">
-            <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a></p>
-            <p>Created with ❤️ by Beruang Batu Bata | Version 1.0</p>
+    st.markdown("""
+        <div style="text-align: center; margin-top: 2rem; font-size: 0.9em; color: #afb8c1;">
+            <p>Data Sourced From <a href="https://liquipedia.net/mobilelegends" target="_blank">Liquipedia</a> and licensed under <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank">CC BY-SA 3.0</a>.</p>
         </div>
     """, unsafe_allow_html=True)
