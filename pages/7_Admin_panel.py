@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.drafting_ai import train_and_save_prediction_model
-from utils.data_processing import HERO_PROFILES
+from utils.hero_data import HERO_PROFILES
 from utils.sidebar import build_sidebar
 import os
 
