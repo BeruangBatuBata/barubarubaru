@@ -1,5 +1,6 @@
 import streamlit as st
-from utils.api_handler import ALL_TOURNAMENTS, load_tournament_data, clear_cache_for_live_tournaments
+from utils.tournaments import ALL_TOURNAMENTS
+from utils.api_handler import load_tournament_data, clear_cache_for_live_tournaments
 from utils.data_processing import parse_matches
 import os
 import base64
