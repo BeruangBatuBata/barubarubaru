@@ -2,7 +2,7 @@ import streamlit as st
 from collections import defaultdict
 from utils.drafting_ai import load_prediction_assets, predict_draft_outcome, get_ai_suggestions, generate_prediction_explanation
 from utils.simulation import calculate_series_score_probs
-from utils.data_processing import HERO_PROFILES, HERO_DAMAGE_TYPE
+from utils.hero_data import HERO_PROFILES, HERO_DAMAGE_TYPE
 from utils.sidebar import build_sidebar
 import pandas as pd
 
