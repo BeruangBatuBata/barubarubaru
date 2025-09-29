@@ -23,6 +23,7 @@ ALL_TOURNAMENTS = {
     'MCC S6': {'path': 'MLBB_Continental_Championships/Season_6', 'region': 'EECA', 'year': 2025, 'live': True, 'league': 'MCC (EECA)', 'split': '2025 Split 2'},
     'China Masters 2025': {'path': 'MLBB_China_Masters/2025', 'region': 'China', 'year': 2025, 'live': True, 'league': 'China Masters', 'split': '2025 Split 2'},
     'MTC S5': {'path': 'MTC_Turkiye_Championship/Season_5', 'region': 'Turkey', 'year': 2025, 'live': True, 'league': 'MTC (Turkey)', 'split': '2025 Split 1'},
+    'MPL KH Season 9': {'path': 'MPL/Cambodia/Season_9', 'region': 'Cambodia', 'year': 2025, 'live': True, 'league': 'MPL Cambodia', 'split': '2025 Split 1'},
 }
 # --- MODIFICATION END ---
 
