@@ -226,37 +226,69 @@ def calculate_series_score_probs(p_win, n_games):
 ### --- END MODIFIED --- ###
 
 # --- SIMULATION ENGINES ---
-def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
+def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+    """
+    Runs the full Monte Carlo simulation and tracks best/worst rank for a specific team.
+    """
     finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
+    
+    # Initialize trackers for the new feature
+    best_rank = len(teams)
+    worst_rank = 1
+
     for _ in range(n_sim):
-        sim_wins = defaultdict(int, current_wins); sim_diff = defaultdict(int, current_diff)
-        for a, b, dt, bo in unplayed_matches:
-            code = forced_outcomes.get((a, b, dt), "random")
-            outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
-            if outcome == "DRAW": continue
-            winner, loser = (a, b) if outcome.startswith("A") else (b, a)
-            num = outcome[1:]; w, l = (int(num[0]), int(num[1])) if len(num) == 2 else (int(num), 0)
-            sim_wins[winner] += 1; sim_diff[winner] += w - l; sim_diff[loser] += l - w
-        ranked = sorted(teams, key=lambda t: (sim_wins[t], sim_diff[t], random.random()), reverse=True)
-        for pos, t in enumerate(ranked):
+        # Use the new helper to get the result of one simulation
+        ranked_teams = _run_single_simulation_instance(list(teams), dict(current_wins), dict(current_diff), list(unplayed_matches), dict(forced_outcomes))
+        
+        for pos, team in enumerate(ranked_teams):
             rank = pos + 1
+            
+            # Original logic to calculate bracket probabilities
             for bracket in brackets:
                 start, end = bracket["start"], bracket.get("end") or len(teams)
-                if start <= rank <= end: finish_counter[t][bracket["name"]] += 1; break
+                if start <= rank <= end:
+                    finish_counter[team][bracket["name"]] += 1
+                    break
+            
+            # New logic to track best/worst rank for the selected team
+            if team == team_to_track:
+                if rank < best_rank:
+                    best_rank = rank
+                if rank > worst_rank:
+                    worst_rank = rank
+
+    # --- Create the results DataFrame ---
     rows = []
     for t in teams:
         row = {"Team": t}
-        for bracket in brackets: row[f"{bracket['name']} (%)"] = (finish_counter[t][bracket["name"]] / n_sim) * 100
+        for bracket in brackets:
+            row[f"{bracket['name']} (%)"] = (finish_counter[t].get(bracket["name"], 0) / n_sim) * 100
         rows.append(row)
-    return pd.DataFrame(rows).round(2)
+    
+    probs_df = pd.DataFrame(rows).round(2)
 
-def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim):
+    # --- Return results in a dictionary ---
+    results = {"probs_df": probs_df}
+    if team_to_track:
+        results["best_rank"] = best_rank
+        results["worst_rank"] = worst_rank
+        
+    return results
+
+def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
     """
-    Corrected simulation for group stage tournaments.
+    Runs the full Monte Carlo simulation for groups and tracks best/worst rank.
+    Note: Best/Worst rank is within the group, not overall.
     """
     teams = [t for g_teams in groups.values() for t in g_teams]
     finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
+
+    # Initialize trackers for the new feature
+    best_rank_in_group = float('inf')
+    worst_rank_in_group = 0
+    
     for _ in range(n_sim):
+        # This uses the same helper, as match outcomes are independent of groups
         sim_wins = defaultdict(int, current_wins)
         sim_diff = defaultdict(int, current_diff)
         for a, b, dt, bo in unplayed_matches:
@@ -264,29 +296,80 @@ def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplay
             outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
             if outcome == "DRAW": continue
             winner, loser = (a, b) if outcome.startswith("A") else (b, a)
-            num = outcome[1:]
-            w, l = (int(num[0]), int(num[1])) if len(num) == 2 else (int(num), 0)
-            sim_wins[winner] += 1
-            sim_diff[winner] += w - l
-            sim_diff[loser] += l - w
+            num = outcome[1:]; w, l = int(num[0]), int(num[1])
+            sim_wins[winner] += 1; sim_diff[winner] += w - l; sim_diff[loser] += l - w
+
+        # Rank within each group
         for group_name, group_teams in groups.items():
-            ranked_in_group = sorted(group_teams, key=lambda t: (sim_wins[t], sim_diff[t], random.random()), reverse=True)
+            ranked_in_group = sorted(group_teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0), random.random()), reverse=True)
             for pos, team in enumerate(ranked_in_group):
                 rank_in_group = pos + 1
+                
+                # Bracket logic
                 for bracket in brackets:
-                    start = bracket["start"]
-                    end = bracket.get("end") or len(group_teams) 
+                    start = bracket["start"]; end = bracket.get("end") or len(group_teams)
                     if start <= rank_in_group <= end:
                         finish_counter[team][bracket["name"]] += 1
                         break
+
+                # Best/Worst rank logic
+                if team == team_to_track:
+                    if rank_in_group < best_rank_in_group:
+                        best_rank_in_group = rank_in_group
+                    if rank_in_group > worst_rank_in_group:
+                        worst_rank_in_group = rank_in_group
+
+    # --- Create the results DataFrame ---
     prob_data = []
     for t in teams:
         row = {"Team": t}
         for g_name, g_teams in groups.items():
-            if t in g_teams:
-                row["Group"] = g_name
-                break
+            if t in g_teams: row["Group"] = g_name; break
         for bracket in brackets:
             row[f"{bracket['name']} (%)"] = (finish_counter[t][bracket["name"]] / n_sim) * 100
         prob_data.append(row)
-    return pd.DataFrame(prob_data).round(2)
+    
+    probs_df = pd.DataFrame(prob_data).round(2)
+    
+    # --- Return results in a dictionary ---
+    results = {"probs_df": probs_df}
+    if team_to_track:
+        results["best_rank"] = best_rank_in_group
+        results["worst_rank"] = worst_rank_in_group
+    
+    return results
+
+def _run_single_simulation_instance(teams, initial_wins, initial_diff, unplayed_matches, forced_outcomes):
+    """
+    Simulates one possible future for a single table format and returns the ranked teams.
+    """
+    sim_wins = defaultdict(int, initial_wins)
+    sim_diff = defaultdict(int, initial_diff)
+
+    for a, b, dt, bo in unplayed_matches:
+        # Use a specific forced outcome if provided, otherwise pick a random one
+        code = forced_outcomes.get((a, b, dt), "random")
+        if code == "random":
+            # Generate possible outcomes (e.g., "A20", "A21", "B21", "B20")
+            options = [c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]
+            outcome = random.choice(options)
+        else:
+            outcome = code
+        
+        if outcome == "DRAW":
+            continue
+
+        winner = a if outcome.startswith("A") else b
+        loser = b if outcome.startswith("A") else a
+        
+        score_str = outcome[1:]
+        w_score = int(score_str[0])
+        l_score = int(score_str[1])
+        
+        sim_wins[winner] += 1
+        sim_diff[winner] += w_score - l_score
+        sim_diff[loser] += l_score - w_score
+        
+    # Rank teams by wins, then diff, with a random tie-breaker
+    ranked = sorted(teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0), random.random()), reverse=True)
+    return ranked
