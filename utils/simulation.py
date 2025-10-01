@@ -6,30 +6,88 @@ from collections import defaultdict
 import math
 from math import comb
 
-# --- BRACKET CONFIGURATION FUNCTIONS ---
+# --- UNIFIED CONFIGURATION FUNCTIONS ---
+
+def get_permanent_config_path(tournament_name):
+    """Generate the standard path for a permanent tournament config file."""
+    return os.path.join("configs", f"{tournament_name.replace(' ', '_')}.json")
+
+def load_unified_config(tournament_name):
+    """
+    Loads a tournament's complete configuration with a clear priority:
+    1. Session-specific (cached) file (e.g., .playoff_config_...)
+    2. Permanent file in the /configs/ directory
+    3. Default values
+    """
+    session_bracket_file = get_bracket_cache_key(tournament_name)
+    session_group_file = get_group_cache_key(tournament_name)
+    session_format_file = get_format_cache_key(tournament_name)
+    permanent_file = get_permanent_config_path(tournament_name)
+
+    config = {
+        "tournament_name": tournament_name,
+        "format": None,
+        "groups": {},
+        "brackets": []
+    }
+
+    # 1. Load from permanent file first to establish a base
+    if os.path.exists(permanent_file):
+        try:
+            with open(permanent_file, 'r') as f:
+                config.update(json.load(f))
+        except (json.JSONDecodeError, IOError):
+            pass # Fallback to defaults if file is corrupt
+
+    # 2. Override with session-specific files if they exist
+    if os.path.exists(session_format_file):
+        try:
+            with open(session_format_file, 'r') as f:
+                config['format'] = json.load(f).get('format')
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    if os.path.exists(session_group_file):
+        try:
+            with open(session_group_file, 'r') as f:
+                config['groups'] = json.load(f).get('groups', {})
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    if os.path.exists(session_bracket_file):
+        try:
+            with open(session_bracket_file, 'r') as f:
+                config['brackets'] = json.load(f).get('brackets', [])
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    # 3. Apply defaults if any part of the config is still missing
+    if not config.get('format'):
+        config['format'] = 'single_table' # Default format
+
+    if not config.get('brackets'):
+        config['brackets'] = [
+            {"start": 1, "end": 2, "name": "Upper Bracket"},
+            {"start": 3, "end": 6, "name": "Play-in"},
+            {"start": 7, "end": 9, "name": "Eliminated"}
+        ]
+
+    return config
+
+# The old individual save/load functions are kept for session-specific operations
+
 def get_bracket_cache_key(tournament_name):
     """Generate a unique filename for a tournament's bracket config."""
     return f".playoff_config_{tournament_name.replace(' ', '_')}.json"
 
 def load_bracket_config(tournament_name):
-    """Load a saved bracket configuration from a local JSON file."""
-    cache_file = get_bracket_cache_key(tournament_name)
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, 'r') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {
-        "brackets": [
-            {"start": 1, "end": 2, "name": "Top 2 Seed"},
-            {"start": 3, "end": 6, "name": "Playoff (3-6)"},
-            {"start": 7, "end": None, "name": "Unqualified"}
-        ]
-    }
+    """Load a saved bracket configuration."""
+    config = load_unified_config(tournament_name)
+    return {"brackets": config['brackets']}
+
 
 def save_bracket_config(tournament_name, config):
-    """Save a bracket configuration to a local JSON file."""
+    """Save a bracket configuration to a local session file."""
     cache_file = get_bracket_cache_key(tournament_name)
     try:
         with open(cache_file, 'w') as f:
@@ -38,25 +96,18 @@ def save_bracket_config(tournament_name, config):
     except Exception:
         return False
 
-# --- TOURNAMENT FORMAT CONFIGURATION FUNCTIONS ---
 def get_format_cache_key(tournament_name):
     """Generate a unique filename for a tournament's format choice."""
     return f".tournament_format_{tournament_name.replace(' ', '_')}.json"
 
+
 def load_tournament_format(tournament_name):
-    """Load a saved format choice from a local JSON file."""
-    cache_file = get_format_cache_key(tournament_name)
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, 'r') as f:
-                data = json.load(f)
-                return data.get("format")
-        except Exception:
-            pass
-    return None
+    """Load a saved format choice."""
+    return load_unified_config(tournament_name).get('format')
+
 
 def save_tournament_format(tournament_name, format_choice):
-    """Save a format choice to a local JSON file."""
+    """Save a format choice to a local session file."""
     cache_file = get_format_cache_key(tournament_name)
     try:
         with open(cache_file, 'w') as f:
@@ -65,24 +116,19 @@ def save_tournament_format(tournament_name, format_choice):
     except Exception:
         return False
 
-# --- GROUP CONFIGURATION FUNCTIONS ---
 def get_group_cache_key(tournament_name):
     """Generate a unique filename for a tournament's group config."""
     return f".group_config_{tournament_name.replace(' ', '_')}.json"
 
+
 def load_group_config(tournament_name):
-    """Load a saved group configuration from a local JSON file."""
-    cache_file = get_group_cache_key(tournament_name)
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, 'r') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return None
+    """Load a saved group configuration."""
+    config = load_unified_config(tournament_name)
+    return {"groups": config['groups']}
+
 
 def save_group_config(tournament_name, config):
-    """Save a group configuration to a local JSON file."""
+    """Save a group configuration to a local session file."""
     cache_file = get_group_cache_key(tournament_name)
     try:
         with open(cache_file, 'w') as f:
