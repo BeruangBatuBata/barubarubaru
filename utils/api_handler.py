@@ -5,10 +5,8 @@ import json
 from utils.tournaments import ALL_TOURNAMENTS
 
 # --- CONSTANTS ---
-# The hardcoded key is gone. We will access it securely inside the function.
 BASE_PARAMS = {"wiki": "mobilelegends", "limit": 500}
 
-# This function is unchanged
 def clear_cache_for_live_tournaments(selected_live_keys):
     """Finds and deletes cache files and returns the count of cleared files."""
     cleared_count = 0
@@ -26,15 +24,12 @@ def clear_cache_for_live_tournaments(selected_live_keys):
                     st.warning(f"Could not remove cache for {key}: {e}")
     return cleared_count
 
-# --- MODIFIED FUNCTION ---
 @st.cache_data(ttl=3600)
 def fetch_from_api(tournament_path):
     """Unified function to fetch data from the Liquipedia API."""
     try:
-        # Securely access the API key from st.secrets
         api_key = st.secrets["LIQUIPEDIA_API_KEY"]
         
-        # Build headers just before the request is made
         headers = {
             "Authorization": f"Apikey {api_key}", 
             "User-Agent": "HeroStatsCollector/1.0"
@@ -49,13 +44,11 @@ def fetch_from_api(tournament_path):
         return resp.json().get("result", [])
         
     except KeyError:
-        # This error is specifically for when the secret isn't set
         st.error("API key not found. Please add 'LIQUIPEDIA_API_KEY' to your Streamlit secrets.")
         return {'error': 'API key not configured.'}
     except Exception as e:
         return {'error': str(e)}
 
-# --- MODIFIED FUNCTION ---
 def load_tournament_data(tournament_name):
     """Loads data from local file or fetches from API."""
     tournament_info = ALL_TOURNAMENTS[tournament_name]
