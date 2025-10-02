@@ -171,7 +171,7 @@ def get_series_outcome_options(teamA, teamB, bestof):
 def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
-    Displays a 1-based Rank column.
+    Displays a 1-based Rank column and a game score differential ('Diff') column.
     """
     standings = {
         team: {
@@ -217,27 +217,30 @@ def build_standings_table(teams, matches):
 
     df = pd.DataFrame.from_dict(standings, orient='index')
     
+    # Calculate the new 'Diff' column
+    df["Diff"] = df["Games W"] - df["Games L"]
     df["Games (W-L)"] = df.apply(lambda row: f"{row['Games W']}-{row['Games L']}", axis=1)
     
     if has_draws:
         df["Matches (W-D-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches D']}-{row['Matches L']}", axis=1)
-        display_columns = ["Matches (W-D-L)", "Games (W-L)"]
-        sort_columns = ["Matches W", "Matches D", "Games W", "Games L"]
+        # Add 'Diff' to the display and sorting columns
+        display_columns = ["Matches (W-D-L)", "Games (W-L)", "Diff"]
+        sort_columns = ["Matches W", "Matches D", "Diff", "Games W"]
     else:
         df["Matches (W-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches L']}", axis=1)
-        display_columns = ["Matches (W-L)", "Games (W-L)"]
-        sort_columns = ["Matches W", "Games W", "Games L"]
+        # Add 'Diff' to the display and sorting columns
+        display_columns = ["Matches (W-L)", "Games (W-L)", "Diff"]
+        sort_columns = ["Matches W", "Diff", "Games W"]
 
-    df = df.sort_values(by=sort_columns, ascending=False)
+    # Use a stable sort to respect initial order for tie-breaking where all values are equal
+    df = df.sort_values(by=sort_columns, ascending=False, kind='stable')
     
     df = df[display_columns]
     df.index.name = "Team"
     df = df.reset_index()
 
-    # --- START: FINAL FIX ---
-    # Insert a new column at the beginning named 'Rank' with 1-based numbering.
+    # Insert the 'Rank' column at the beginning
     df.insert(0, 'Rank', np.arange(1, len(df) + 1))
-    # --- END: FINAL FIX ---
     
     return df
 
