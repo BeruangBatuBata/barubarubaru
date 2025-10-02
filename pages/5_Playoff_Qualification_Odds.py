@@ -96,6 +96,12 @@ def group_setup_ui():
     st.header(f"Group Configuration for {tournament_name}"); st.write("Assign the teams into their respective groups.")
     if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict):
         st.session_state.group_config = {'groups': {'Group A': [], 'Group B': []}}
+        
+    current_groups = st.session_state.group_config.get('groups', {})
+    default_num_groups = len(current_groups) if len(current_groups) > 0 else 2
+    
+    num_groups = st.number_input("Number of Groups", min_value=1, max_value=8, value=default_num_groups)
+    
     num_groups = st.number_input("Number of Groups", 1, 8, len(st.session_state.group_config.get('groups', {})))
     current_groups = st.session_state.group_config.get('groups', {})
     if len(current_groups) != num_groups:
