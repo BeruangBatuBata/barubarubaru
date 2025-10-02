@@ -170,10 +170,13 @@ def get_series_outcome_options(teamA, teamB, bestof):
 def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
-    This version uses a more robust method to identify draws.
+    Displays separate records for overall Matches (W-D-L) and individual Games (W-L).
     """
     standings = {
-        team: {"W": 0, "D": 0, "L": 0, "Diff": 0} for team in teams
+        team: {
+            "Matches W": 0, "Matches D": 0, "Matches L": 0,
+            "Games W": 0, "Games L": 0
+        } for team in teams
     }
     
     has_draws = False
@@ -189,6 +192,7 @@ def build_standings_table(teams, matches):
         if not teamA or not teamB or teamA not in teams or teamB not in teams:
             continue
 
+        # Calculate individual game scores
         scoreA, scoreB = 0, 0
         for game in m.get("match2games", []):
             winner_id = str(game.get('winner'))
@@ -197,41 +201,52 @@ def build_standings_table(teams, matches):
             elif winner_id == '2':
                 scoreB += 1
         
-        # Update differentials regardless of outcome
-        standings[teamA]["Diff"] += scoreA - scoreB
-        standings[teamB]["Diff"] += scoreB - scoreA
+        # Update Games W-L record for both teams
+        standings[teamA]["Games W"] += scoreA
+        standings[teamA]["Games L"] += scoreB
+        standings[teamB]["Games W"] += scoreB
+        standings[teamB]["Games L"] += scoreA
 
-        # --- START: CORRECTED DRAW LOGIC ---
-        # A Bo2 match with a 1-1 score is ALWAYS a draw. This is more reliable.
+        # Determine Match outcome (Win, Draw, or Loss)
         is_bo2_draw = str(m.get("bestof")) == "2" and scoreA == 1 and scoreB == 1
 
         if is_bo2_draw:
             has_draws = True
-            standings[teamA]["D"] += 1
-            standings[teamB]["D"] += 1
-        elif m.get("winner") == "1": # Team A wins
-            standings[teamA]["W"] += 1
-            standings[teamB]["L"] += 1
-        elif m.get("winner") == "2": # Team B wins
-            standings[teamB]["W"] += 1
-            standings[teamA]["L"] += 1
-        # --- END: CORRECTED DRAW LOGIC ---
+            standings[teamA]["Matches D"] += 1
+            standings[teamB]["Matches D"] += 1
+        elif m.get("winner") == "1":
+            standings[teamA]["Matches W"] += 1
+            standings[teamB]["Matches L"] += 1
+        elif m.get("winner") == "2":
+            standings[teamB]["Matches W"] += 1
+            standings[teamA]["Matches L"] += 1
 
-    # Convert to DataFrame
+    # Convert the standings dictionary to a pandas DataFrame
     df = pd.DataFrame.from_dict(standings, orient='index')
     
-    # Define columns to display and sort by
-    if has_draws:
-        display_columns = ["W", "D", "L", "Diff"]
-        # In most tournaments, standings are sorted by Wins, then Diff, then Draws are just informational.
-        sort_columns = ["W", "Diff"] 
-    else:
-        display_columns = ["W", "L", "Diff"]
-        sort_columns = ["W", "Diff"]
+    # --- START: NEW TEMPLATE LOGIC ---
 
-    # Select and sort the DataFrame
-    df = df[display_columns]
+    # Create the "Games Record" column (always W-L)
+    df["Games (W-L)"] = df.apply(lambda row: f"{row['Games W']}-{row['Games L']}", axis=1)
+    
+    # Conditionally create the "Matches Record" column
+    if has_draws:
+        df["Matches (W-D-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches D']}-{row['Matches L']}", axis=1)
+        # Define the final column order for tables with draws
+        display_columns = ["Matches (W-D-L)", "Games (W-L)"]
+        sort_columns = ["Matches W", "Matches D", "Games W", "Games L"]
+    else:
+        df["Matches (W-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches L']}", axis=1)
+        # Define the final column order for tables without draws
+        display_columns = ["Matches (W-L)", "Games (W-L)"]
+        sort_columns = ["Matches W", "Games W", "Games L"]
+
+    # Sort the DataFrame by the appropriate columns
+    # We sort by the raw numbers, not the formatted strings
     df = df.sort_values(by=sort_columns, ascending=False)
+    
+    # Select only the final display columns to show in the UI
+    df = df[display_columns]
     
     df.index.name = "Team"
     return df.reset_index()
