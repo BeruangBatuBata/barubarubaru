@@ -114,13 +114,8 @@ def group_setup_ui():
     st.write("Assign the teams into their respective groups.")
 
     # Initialize group_config if it doesn't exist or is invalid
-    if 'group_config' in st.session_state and isinstance(st.session_state.group_config, dict):
-        all_teams_in_config = {team for group_list in st.session_state.group_config.get('groups', {}).values() for team in group_list}
-        valid_teams = set(teams)
-        if not all_teams_in_config.issubset(valid_teams):
-            # If any team in the config is invalid for this tournament, reset the config.
-            del st.session_state['group_config']
-            st.toast("Previous group configuration was invalid for this tournament and has been reset.", icon="⚠️")
+    if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict) or not st.session_state.group_config.get('groups'):
+        st.session_state.group_config = {'groups': {'Group A': [], 'Group B': []}}
 
     current_groups = st.session_state.group_config.get('groups', {})
     default_num_groups = len(current_groups) if len(current_groups) > 0 else 2
