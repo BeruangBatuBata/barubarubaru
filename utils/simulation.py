@@ -171,6 +171,7 @@ def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
     Displays separate records for overall Matches (W-D-L) and individual Games (W-L).
+    The final table is 1-indexed for correct ranking display.
     """
     standings = {
         team: {
@@ -224,58 +225,34 @@ def build_standings_table(teams, matches):
     # Convert the standings dictionary to a pandas DataFrame
     df = pd.DataFrame.from_dict(standings, orient='index')
     
-    # --- START: NEW TEMPLATE LOGIC ---
-
     # Create the "Games Record" column (always W-L)
     df["Games (W-L)"] = df.apply(lambda row: f"{row['Games W']}-{row['Games L']}", axis=1)
     
     # Conditionally create the "Matches Record" column
     if has_draws:
         df["Matches (W-D-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches D']}-{row['Matches L']}", axis=1)
-        # Define the final column order for tables with draws
         display_columns = ["Matches (W-D-L)", "Games (W-L)"]
         sort_columns = ["Matches W", "Matches D", "Games W", "Games L"]
     else:
         df["Matches (W-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches L']}", axis=1)
-        # Define the final column order for tables without draws
         display_columns = ["Matches (W-L)", "Games (W-L)"]
         sort_columns = ["Matches W", "Games W", "Games L"]
 
     # Sort the DataFrame by the appropriate columns
-    # We sort by the raw numbers, not the formatted strings
     df = df.sort_values(by=sort_columns, ascending=False)
     
     # Select only the final display columns to show in the UI
     df = df[display_columns]
     
     df.index.name = "Team"
-    return df.reset_index()
+    df = df.reset_index()
 
-def build_week_blocks(dates_str):
-    """Groups dates into week-long blocks."""
-    if not dates_str: return []
+    # --- START: FINAL FIX ---
+    # Overwrite the default 0-based index with a 1-based index for ranking.
+    df.index = np.arange(1, len(df) + 1)
+    # --- END: FINAL FIX ---
     
-    # Convert string dates to datetime.date objects for comparison
-    dates = []
-    for d_str in dates_str:
-        try:
-            # pd.to_datetime is robust and handles various formats
-            dates.append(pd.to_datetime(d_str).date())
-        except (ValueError, TypeError):
-            continue # Skip if a date string is invalid
-    
-    if not dates: return []
-
-    # Sort the converted dates
-    dates = sorted(list(set(dates)))
-
-    blocks = [[dates[0]]]
-    for prev, curr in zip(dates, dates[1:]):
-        if (curr - prev).days <= 2:
-            blocks[-1].append(curr)
-        else:
-            blocks.append([curr])
-    return blocks
+    return df
 
 ### --- MODIFIED --- ###
 def calculate_series_score_probs(p_win, n_games):
