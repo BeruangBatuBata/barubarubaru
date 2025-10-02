@@ -1,0 +1,27 @@
+{
+  "tournament_name": "MSL MM Season 2",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 2,
+      "name": "Play-Ins Final (1-2)"
+    },
+    {
+      "start": 3,
+      "end": 4,
+      "name": "Play-Ins SF (3-4)"
+    },
+    {
+      "start": 5,
+      "end": 8,
+      "name": "LC Play-ins"
+    },
+    {
+      "name": "Unqualified",
+      "start": 9,
+      "end": 10
+    }
+  ]
+}

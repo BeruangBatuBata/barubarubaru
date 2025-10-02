@@ -1,0 +1,27 @@
+{
+  "tournament_name": "MPL PH Season 13",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 3,
+      "name": "UB SF Playoffs"
+    },
+    {
+      "start": 4,
+      "end": 4,
+      "name": "Round 2"
+    },
+    {
+      "start": 5,
+      "end": 6,
+      "name": "Round 3"
+    },
+    {
+      "name": "Unqualified",
+      "start": 7,
+      "end": 8
+    }
+  ]
+}

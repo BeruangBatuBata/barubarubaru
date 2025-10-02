@@ -1,0 +1,22 @@
+{
+  "tournament_name": "MCC S6",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 2,
+      "name": "Playoffs (1-2)"
+    },
+    {
+      "start": 3,
+      "end": 4,
+      "name": "UB Play-ins (3-4)"
+    },
+    {
+      "start": 5,
+      "end": 8,
+      "name": "LB Play-ins (5-8)"
+    }
+  ]
+}

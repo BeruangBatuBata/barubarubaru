@@ -1,0 +1,22 @@
+{
+  "tournament_name": "MPL ID Season 15",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 2,
+      "name": "Upper Bracket"
+    },
+    {
+      "start": 3,
+      "end": 6,
+      "name": "Play-in"
+    },
+    {
+      "start": 7,
+      "end": 9,
+      "name": "Eliminated"
+    }
+  ]
+}

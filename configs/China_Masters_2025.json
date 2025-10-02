@@ -1,0 +1,30 @@
+{
+  "tournament_name": "China Masters 2025",
+  "format": "group",
+  "groups": {
+    "Group A": [
+      "Invictus Gaming",
+      "KeepBest Gaming",
+      "The Young Gaming",
+      "Rare Atom"
+    ],
+    "Group B": [
+      "DianFengYaoGuai",
+      "Guangzhou Gaming",
+      "YBINGAME",
+      "Ying Jiang Nan"
+    ]
+  },
+  "brackets": [
+    {
+      "start": 1,
+      "end": 2,
+      "name": "Qualified"
+    },
+    {
+      "start": 3,
+      "end": 4,
+      "name": "Unqualified"
+    }
+  ]
+}
