@@ -203,8 +203,8 @@ def single_table_dashboard():
     with col1:
         week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in simulation_matches if "date" in m))))
         if week_blocks:
-            week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
-            week_options["Pre-Season (Week 0)"] = -1
+            week_options = {"Pre-Season (Week 0)": -1}
+            week_options.update({f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)})
             sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
             cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0])
             cutoff_week_idx = week_options[cutoff_week_label]
@@ -242,23 +242,15 @@ def single_table_dashboard():
     cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
     
     for m in simulation_matches:
-        match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
-        
-        # Determine if the match is considered "played" based on the new rules
         is_played = False
-        num_games_played = len(m.get("match2games", []))
+        if cutoff_date: # If a cutoff date is set (not Week 0)
+            match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+            has_winner = m.get("winner") in ("1", "2")
+            is_bo2_complete = str(m.get("bestof")) == "2" and len(m.get("match2games", [])) == 2
         
-        # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
-        has_winner = m.get("winner") in ("1", "2")
-        # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-        is_bo2_complete = str(m.get("bestof")) == "2" and num_games_played == 2
-    
-        if has_winner or is_bo2_complete:
-            if cutoff_date and match_date and match_date <= cutoff_date:
+            if (has_winner or is_bo2_complete) and match_date and match_date <= cutoff_date:
                 is_played = True
-            elif not cutoff_date: # If no cutoff, any completed match is "played"
-                is_played = True
-    
+
         if is_played:
             played.append(m)
         else:
@@ -558,8 +550,8 @@ def group_dashboard():
     with col1:
         week_blocks = build_week_blocks(sorted(list(set(m["date"] for m in simulation_matches if "date" in m))))
         if week_blocks:
-            week_options = {f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)}
-            week_options["Pre-Season (Week 0)"] = -1
+            week_options = {"Pre-Season (Week 0)": -1}
+            week_options.update({f"Week {i+1} ({wk[0]} to {wk[-1]})": i for i, wk in enumerate(week_blocks)})
             sorted_week_options = sorted(week_options.items(), key=lambda item: item[1])
             cutoff_week_label = st.select_slider("Select Cutoff Week:", options=[opt[0] for opt in sorted_week_options], value=sorted_week_options[-1][0], key="group_week_slider")
             cutoff_week_idx = week_options[cutoff_week_label]
@@ -606,23 +598,15 @@ def group_dashboard():
     cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
     
     for m in simulation_matches:
-        match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
-        
-        # Determine if the match is considered "played" based on the new rules
         is_played = False
-        num_games_played = len(m.get("match2games", []))
+        if cutoff_date:
+            match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+            has_winner = m.get("winner") in ("1", "2")
+            is_bo2_complete = str(m.get("bestof")) == "2" and len(m.get("match2games", [])) == 2
         
-        # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
-        has_winner = m.get("winner") in ("1", "2")
-        # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-        is_bo2_complete = str(m.get("bestof")) == "2" and num_games_played == 2
-    
-        if has_winner or is_bo2_complete:
-            if cutoff_date and match_date and match_date <= cutoff_date:
+            if (has_winner or is_bo2_complete) and match_date and match_date <= cutoff_date:
                 is_played = True
-            elif not cutoff_date: # If no cutoff, any completed match is "played"
-                is_played = True
-    
+
         if is_played:
             played.append(m)
         else:
