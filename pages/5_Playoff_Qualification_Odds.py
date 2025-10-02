@@ -109,8 +109,6 @@ def get_teams_from_match(match):
 
 # In pages/5_Playoff_Qualification_Odds.py
 
-# In pages/5_Playoff_Qualification_Odds.py
-
 def group_setup_ui():
     st.header(f"Group Configuration for {tournament_name}")
     st.write("Assign the teams into their respective groups.")
@@ -138,11 +136,15 @@ def group_setup_ui():
     
     # --- START: FINAL CORRECTED LOGIC ---
 
+    # Flag to check if a rerun is needed after the full UI is drawn.
+    rerun_needed = False
+
     cols = st.columns(num_groups)
     
     # Get a set of all teams that have been assigned to any group
     all_assigned_teams = {team for group_list in current_groups.values() for team in group_list}
 
+    # Loop and draw ALL group selection boxes first.
     for i, (group_name, group_teams) in enumerate(current_groups.items()):
         with cols[i]:
             st.subheader(group_name)
@@ -167,9 +169,13 @@ def group_setup_ui():
             # Update the state with the potentially new selection
             current_groups[group_name] = selected_teams
 
-            # RERUN ONLY IF A CHANGE WAS MADE: Compare the list before and after
+            # If a change was made, set the flag to True.
             if set(teams_before_change) != set(selected_teams):
-                st.rerun() # This will now only run on user interaction
+                rerun_needed = True
+
+    # After the loop is finished and the entire UI is drawn, check the flag.
+    if rerun_needed:
+        st.rerun()
 
     # --- END: FINAL CORRECTED LOGIC ---
 
@@ -185,6 +191,7 @@ def group_setup_ui():
         st.success("Group configuration saved!")
         st.session_state.page_view = 'group_sim'
         st.rerun()
+        
 def single_table_dashboard():
     st.header(f"Simulation for {tournament_name} (Single Table)")
     st.button("← Change Tournament Format", on_click=lambda: st.session_state.update(page_view='format_selection'))
