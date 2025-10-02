@@ -138,11 +138,32 @@ def save_group_config(tournament_name, config):
         return False
 
 # --- HELPER FUNCTIONS ---
-def get_series_outcome_options(teamA, teamB, bo: int):
-    opts = [("Random", "random")]
-    if bo == 3:
-        opts += [(f"{teamA} 2–0", "A20"), (f"{teamA} 2–1", "A21"), (f"{teamB} 2–1", "B21"), (f"{teamB} 2–0", "B20")]
-    return opts
+def get_series_outcome_options(teamA, teamB, bestof):
+    """
+    Generates a list of possible outcomes for a series given the format.
+    """
+    options = [("Random", "random")]
+    try:
+        bo = int(bestof)
+        # Handle Best of 1
+        if bo == 1:
+            options.extend([(f"{teamA} Wins 1-0", "A10"), (f"{teamB} Wins 1-0", "B10")])
+        # Handle Best of 2 (with Draws)
+        elif bo == 2:
+            options.extend([(f"{teamA} Wins 2-0", "A20"), ("Series is a 1-1 Draw", "DRAW"), (f"{teamB} Wins 2-0", "B20")])
+        # Handle Best of 3
+        elif bo == 3:
+            options.extend([(f"{teamA} Wins 2-0", "A20"), (f"{teamA} Wins 2-1", "A21"), (f"{teamB} Wins 2-0", "B20"), (f"{teamB} Wins 2-1", "B21")])
+        # Handle Best of 5
+        elif bo == 5:
+            options.extend([(f"{teamA} Wins 3-0", "A30"), (f"{teamA} Wins 3-1", "A31"), (f"{teamA} Wins 3-2", "A32"), (f"{teamB} Wins 3-0", "B30"), (f"{teamB} Wins 3-1", "B31"), (f"{teamB} Wins 3-2", "B32")])
+        # ADDED: Handle Best of 7
+        elif bo == 7:
+            options.extend([(f"{teamA} Wins 4-0", "A40"), (f"{teamA} Wins 4-1", "A41"), (f"{teamA} Wins 4-2", "A42"), (f"{teamA} Wins 4-3", "A43"), (f"{teamB} Wins 4-0", "B40"), (f"{teamB} Wins 4-1", "B41"), (f"{teamB} Wins 4-2", "B42"), (f"{teamB} Wins 4-3", "B43")])
+    except (ValueError, TypeError):
+        # If 'bestof' is not a valid number, return only the Random option
+        return [("Random", "random")]
+    return options
 
 def build_standings_table(teams, played_matches):
     stats = {team: {'match_wins': 0, 'match_count': 0, 'game_wins': 0, 'game_losses': 0} for team in teams}
