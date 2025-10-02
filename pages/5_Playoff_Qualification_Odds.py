@@ -238,34 +238,31 @@ def single_table_dashboard():
 
     # --- Corrected Data Preparation Logic ---
     played = []
-unplayed = []
-cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
-
-for m in simulation_matches:
-    match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+    unplayed = []
+    cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
     
-    # Determine if the match is considered "played" based on the new rules
-    is_played = False
-    num_games_played = len(m.get("match2games", []))
+    for m in simulation_matches:
+        match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+        
+        # Determine if the match is considered "played" based on the new rules
+        is_played = False
+        num_games_played = len(m.get("match2games", []))
+        
+        # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
+        has_winner = m.get("winner") in ("1", "2")
+        # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
+        is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
     
-    # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
-    has_winner = m.get("winner") in ("1", "2")
-    # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-    is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
-
-    if has_winner or is_bo2_complete:
-        if cutoff_date and match_date and match_date <= cutoff_date:
-            is_played = True
-        elif not cutoff_date: # If no cutoff, any completed match is "played"
-            is_played = True
-
-    if is_played:
-        played.append(m)
-    else:
-        unplayed.append(m)
-    else:
-        played = []
-        unplayed = simulation_matches
+        if has_winner or is_bo2_complete:
+            if cutoff_date and match_date and match_date <= cutoff_date:
+                is_played = True
+            elif not cutoff_date: # If no cutoff, any completed match is "played"
+                is_played = True
+    
+        if is_played:
+            played.append(m)
+        else:
+            unplayed.append(m)
 
     # --- Upcoming Matches (What-If Scenarios) UI ---
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
@@ -605,34 +602,31 @@ def group_dashboard():
 
     # --- Corrected Data Preparation Logic ---
     played = []
-unplayed = []
-cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
-
-for m in simulation_matches:
-    match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+    unplayed = []
+    cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
     
-    # Determine if the match is considered "played" based on the new rules
-    is_played = False
-    num_games_played = len(m.get("match2games", []))
+    for m in simulation_matches:
+        match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
+        
+        # Determine if the match is considered "played" based on the new rules
+        is_played = False
+        num_games_played = len(m.get("match2games", []))
+        
+        # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
+        has_winner = m.get("winner") in ("1", "2")
+        # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
+        is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
     
-    # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
-    has_winner = m.get("winner") in ("1", "2")
-    # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-    is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
-
-    if has_winner or is_bo2_complete:
-        if cutoff_date and match_date and match_date <= cutoff_date:
-            is_played = True
-        elif not cutoff_date: # If no cutoff, any completed match is "played"
-            is_played = True
-
-    if is_played:
-        played.append(m)
-    else:
-        unplayed.append(m)
-    else:
-        played = []
-        unplayed = simulation_matches
+        if has_winner or is_bo2_complete:
+            if cutoff_date and match_date and match_date <= cutoff_date:
+                is_played = True
+            elif not cutoff_date: # If no cutoff, any completed match is "played"
+                is_played = True
+    
+        if is_played:
+            played.append(m)
+        else:
+            unplayed.append(m)
 
     # --- Upcoming Matches (What-If Scenarios) UI ---
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
