@@ -786,34 +786,51 @@ def group_dashboard():
                 st.info("No single external match significantly helps this team's chances.")
 
 # --- Page Router ---
+# This block runs when the page loads or the tournament changes
 if 'page_view' not in st.session_state or st.session_state.get('active_tournament') != tournament_name:
     st.session_state.active_tournament = tournament_name
     saved_format = load_tournament_format(tournament_name)
-    if saved_format == 'single_table': st.session_state.page_view = 'single_table_sim'
+    
+    if saved_format == 'single_table':
+        st.session_state.page_view = 'single_table_sim'
     elif saved_format == 'group':
-        st.session_state.page_view = 'group_sim'
+        # CORRECTED LOGIC: Check for group config before setting the page view
         saved_group_config = load_group_config(tournament_name)
-        if saved_group_config: st.session_state.group_config = saved_group_config
+        # Also check if the 'groups' key exists and is not empty
+        if saved_group_config and saved_group_config.get('groups'):
+            st.session_state.group_config = saved_group_config
+            st.session_state.page_view = 'group_sim'
+        else:
+            # If no config, go to the setup page
+            st.session_state.page_view = 'group_setup'
     else:
+        # If no format is saved at all, go to the selection page
         st.session_state.page_view = 'format_selection'
 
+# This block displays the correct UI based on the page_view state
 if st.session_state.page_view == 'format_selection':
     st.title("🏆 Playoff Odds: Tournament Format")
     st.write(f"How is **{tournament_name}** structured?")
     col1, col2 = st.columns(2)
     if col1.button("Single Table League", use_container_width=True):
-        save_tournament_format(tournament_name, 'single_table'); st.session_state.page_view = 'single_table_sim'; st.rerun()
+        save_tournament_format(tournament_name, 'single_table')
+        st.session_state.page_view = 'single_table_sim'
+        st.rerun()
     if col2.button("Group Stage", use_container_width=True):
         save_tournament_format(tournament_name, 'group')
         saved_config = load_group_config(tournament_name)
-        if saved_config: st.session_state.group_config = saved_config; st.session_state.page_view = 'group_sim'
-        else: st.session_state.page_view = 'group_setup'
+        if saved_config:
+            st.session_state.group_config = saved_config
+            st.session_state.page_view = 'group_sim'
+        else:
+            st.session_state.page_view = 'group_setup'
         st.rerun()
 
 elif st.session_state.page_view == 'group_setup':
     group_setup_ui()
     if st.button("← Back to Format Selection"):
-        st.session_state.page_view = 'format_selection'; st.rerun()
+        st.session_state.page_view = 'format_selection'
+        st.rerun()
 elif st.session_state.page_view == 'single_table_sim':
     single_table_dashboard()
 elif st.session_state.page_view == 'group_sim':
