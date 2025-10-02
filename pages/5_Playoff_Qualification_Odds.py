@@ -107,34 +107,76 @@ def get_teams_from_match(match):
     teamB = opps[1].get('name', 'Team B') if len(opps) > 1 else 'Team B'
     return teamA, teamB
 
+# In pages/5_Playoff_Qualification_Odds.py
+
 def group_setup_ui():
-    st.header(f"Group Configuration for {tournament_name}"); st.write("Assign the teams into their respective groups.")
-    if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict):
+    st.header(f"Group Configuration for {tournament_name}")
+    st.write("Assign the teams into their respective groups.")
+
+    if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict) or not st.session_state.group_config.get('groups'):
         st.session_state.group_config = {'groups': {'Group A': [], 'Group B': []}}
-        
+
     current_groups = st.session_state.group_config.get('groups', {})
     default_num_groups = len(current_groups) if len(current_groups) > 0 else 2
     
     num_groups = st.number_input("Number of Groups", min_value=1, max_value=8, value=default_num_groups)
 
-    current_groups = st.session_state.group_config.get('groups', {})
     if len(current_groups) != num_groups:
-        new_groups = {}; sorted_keys = sorted(current_groups.keys())
+        new_groups = {}
+        sorted_keys = sorted(current_groups.keys())
         for i in range(num_groups):
-            group_name = sorted_keys[i] if i < len(sorted_keys) else f"Group {chr(65+i)}"; new_groups[group_name] = current_groups.get(group_name, [])
-        st.session_state.group_config['groups'] = new_groups; st.rerun()
+            group_name = sorted_keys[i] if i < len(sorted_keys) else f"Group {chr(65+i)}"
+            new_groups[group_name] = current_groups.get(group_name, [])
+        st.session_state.group_config['groups'] = new_groups
+        st.rerun()
+
     st.markdown("---")
-    assigned_teams = {team for group in current_groups.values() for team in group}
-    unassigned_teams = [team for team in teams if team not in assigned_teams]
-    if unassigned_teams: st.warning(f"Unassigned Teams: {', '.join(unassigned_teams)}")
+    
+    # --- START: CORRECTED LOGIC ---
+    
+    # This block now renders each multiselect with a dynamically filtered list of teams.
     cols = st.columns(num_groups)
+    
+    # Get a set of all teams that are currently assigned to any group.
+    all_assigned_teams = {team for group_list in current_groups.values() for team in group_list}
+
     for i, (group_name, group_teams) in enumerate(current_groups.items()):
         with cols[i]:
-            st.subheader(group_name); new_teams = st.multiselect(f"Teams in {group_name}", teams, default=group_teams, key=f"group_{group_name}")
-            current_groups[group_name] = new_teams
+            st.subheader(group_name)
+
+            # Determine which teams are assigned to OTHER groups.
+            teams_in_other_groups = all_assigned_teams - set(group_teams)
+
+            # Create the list of available options for THIS group's multiselect box.
+            # An option is available if it's in the master 'teams' list AND it's not in another group.
+            available_options = [team for team in teams if team not in teams_in_other_groups]
+            
+            # Render the multiselect widget with the filtered options list.
+            selected_teams = st.multiselect(
+                f"Teams in {group_name}",
+                options=available_options,
+                default=group_teams,
+                key=f"group_{group_name}"
+            )
+            # Update the state with the user's new selection for this group.
+            current_groups[group_name] = selected_teams
+            # Rerun the script to immediately reflect the change in other multiselect boxes.
+            st.rerun() 
+
+    # --- END: CORRECTED LOGIC ---
+
+    # Display unassigned teams (this logic remains the same)
+    assigned_teams_final = {team for group in current_groups.values() for team in group}
+    unassigned_teams = [team for team in teams if team not in assigned_teams_final]
+    if unassigned_teams:
+        st.warning(f"Unassigned Teams: {', '.join(unassigned_teams)}")
+
+    # Save button (this logic remains the same)
     if st.button("Save & Continue", type="primary"):
-        save_group_config(tournament_name, st.session_state.group_config); st.success("Group configuration saved!")
-        st.session_state.page_view = 'group_sim'; st.rerun()
+        save_group_config(tournament_name, st.session_state.group_config)
+        st.success("Group configuration saved!")
+        st.session_state.page_view = 'group_sim'
+        st.rerun()
 
 def single_table_dashboard():
     st.header(f"Simulation for {tournament_name} (Single Table)")
