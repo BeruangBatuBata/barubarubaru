@@ -6,7 +6,7 @@ from utils.simulation import (
     get_series_outcome_options, build_standings_table, run_monte_carlo_simulation,
     load_bracket_config, save_bracket_config, build_week_blocks,
     load_group_config, save_group_config, run_monte_carlo_simulation_groups,
-    load_tournament_format, save_tournament_format
+    load_tournament_format, save_tournament_format, delete_tournament_configs
 )
 from utils.sidebar import build_sidebar
 
@@ -22,6 +22,21 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
     st.warning("Please select and load tournament data on the homepage first.")
     st.stop()
 
+# --- ADD THE RESET BUTTON TO THE SIDEBAR ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚠️ Danger Zone")
+if st.sidebar.button("Force Reset Tournament Config"):
+    tournament_to_reset = st.session_state.selected_tournaments[0]
+    deleted = delete_tournament_configs(tournament_to_reset)
+    if deleted:
+        st.sidebar.success(f"Reset successful! Deleted: {', '.join(deleted)}")
+    else:
+        st.sidebar.info("No saved config found to reset.")
+    
+    # IMPORTANT: Reset the page view state to force a fresh start
+    st.session_state.page_view = 'format_selection'
+    st.rerun()
+# --- END OF BUTTON CODE ---
 # --- Global Data Prep ---
 tournament_name = st.session_state.selected_tournaments[0]
 all_matches_for_tournament = st.session_state['parsed_matches']
