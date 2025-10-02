@@ -109,10 +109,13 @@ def get_teams_from_match(match):
 
 # In pages/5_Playoff_Qualification_Odds.py
 
+# In pages/5_Playoff_Qualification_Odds.py
+
 def group_setup_ui():
     st.header(f"Group Configuration for {tournament_name}")
     st.write("Assign the teams into their respective groups.")
 
+    # Initialize group_config if it doesn't exist or is invalid
     if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict) or not st.session_state.group_config.get('groups'):
         st.session_state.group_config = {'groups': {'Group A': [], 'Group B': []}}
 
@@ -121,6 +124,7 @@ def group_setup_ui():
     
     num_groups = st.number_input("Number of Groups", min_value=1, max_value=8, value=default_num_groups)
 
+    # Adjust the number of groups in the config if the user changes the number input
     if len(current_groups) != num_groups:
         new_groups = {}
         sorted_keys = sorted(current_groups.keys())
@@ -132,52 +136,55 @@ def group_setup_ui():
 
     st.markdown("---")
     
-    # --- START: CORRECTED LOGIC ---
-    
-    # This block now renders each multiselect with a dynamically filtered list of teams.
+    # --- START: FINAL CORRECTED LOGIC ---
+
     cols = st.columns(num_groups)
     
-    # Get a set of all teams that are currently assigned to any group.
+    # Get a set of all teams that have been assigned to any group
     all_assigned_teams = {team for group_list in current_groups.values() for team in group_list}
 
     for i, (group_name, group_teams) in enumerate(current_groups.items()):
         with cols[i]:
             st.subheader(group_name)
 
-            # Determine which teams are assigned to OTHER groups.
-            teams_in_other_groups = all_assigned_teams - set(group_teams)
+            # Store the current state of the group before rendering the widget
+            teams_before_change = list(group_teams)
 
-            # Create the list of available options for THIS group's multiselect box.
-            # An option is available if it's in the master 'teams' list AND it's not in another group.
+            # Determine which teams are assigned to OTHER groups
+            teams_in_other_groups = all_assigned_teams - set(teams_before_change)
+
+            # The options for this multiselect are any team not in another group
             available_options = [team for team in teams if team not in teams_in_other_groups]
             
-            # Render the multiselect widget with the filtered options list.
+            # Render the multiselect widget
             selected_teams = st.multiselect(
                 f"Teams in {group_name}",
                 options=available_options,
-                default=group_teams,
+                default=teams_before_change,
                 key=f"group_{group_name}"
             )
-            # Update the state with the user's new selection for this group.
+
+            # Update the state with the potentially new selection
             current_groups[group_name] = selected_teams
-            # Rerun the script to immediately reflect the change in other multiselect boxes.
-            st.rerun() 
 
-    # --- END: CORRECTED LOGIC ---
+            # RERUN ONLY IF A CHANGE WAS MADE: Compare the list before and after
+            if set(teams_before_change) != set(selected_teams):
+                st.rerun() # This will now only run on user interaction
 
-    # Display unassigned teams (this logic remains the same)
+    # --- END: FINAL CORRECTED LOGIC ---
+
+    # Display unassigned teams
     assigned_teams_final = {team for group in current_groups.values() for team in group}
     unassigned_teams = [team for team in teams if team not in assigned_teams_final]
     if unassigned_teams:
         st.warning(f"Unassigned Teams: {', '.join(unassigned_teams)}")
 
-    # Save button (this logic remains the same)
+    # Save button
     if st.button("Save & Continue", type="primary"):
         save_group_config(tournament_name, st.session_state.group_config)
         st.success("Group configuration saved!")
         st.session_state.page_view = 'group_sim'
         st.rerun()
-
 def single_table_dashboard():
     st.header(f"Simulation for {tournament_name} (Single Table)")
     st.button("← Change Tournament Format", on_click=lambda: st.session_state.update(page_view='format_selection'))
