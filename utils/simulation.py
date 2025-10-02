@@ -170,7 +170,7 @@ def get_series_outcome_options(teamA, teamB, bestof):
 def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
-    Now displays W, D, L, and Diff as separate columns.
+    This version uses a more robust method to identify draws.
     """
     standings = {
         team: {"W": 0, "D": 0, "L": 0, "Diff": 0} for team in teams
@@ -201,29 +201,31 @@ def build_standings_table(teams, matches):
         standings[teamA]["Diff"] += scoreA - scoreB
         standings[teamB]["Diff"] += scoreB - scoreA
 
-        # Determine Win, Draw, or Loss
-        if m.get("winner") == "1": # Team A wins
+        # --- START: CORRECTED DRAW LOGIC ---
+        # A Bo2 match with a 1-1 score is ALWAYS a draw. This is more reliable.
+        is_bo2_draw = str(m.get("bestof")) == "2" and scoreA == 1 and scoreB == 1
+
+        if is_bo2_draw:
+            has_draws = True
+            standings[teamA]["D"] += 1
+            standings[teamB]["D"] += 1
+        elif m.get("winner") == "1": # Team A wins
             standings[teamA]["W"] += 1
             standings[teamB]["L"] += 1
         elif m.get("winner") == "2": # Team B wins
             standings[teamB]["W"] += 1
             standings[teamA]["L"] += 1
-        # It's a draw if there's no winner and games were played
-        elif m.get("winner") is None and (scoreA > 0 or scoreB > 0):
-             has_draws = True
-             standings[teamA]["D"] += 1
-             standings[teamB]["D"] += 1
+        # --- END: CORRECTED DRAW LOGIC ---
 
     # Convert to DataFrame
     df = pd.DataFrame.from_dict(standings, orient='index')
     
-    # --- START: CORRECTED LOGIC ---
-    # Define the columns to display and the columns to sort by
+    # Define columns to display and sort by
     if has_draws:
         display_columns = ["W", "D", "L", "Diff"]
-        sort_columns = ["W", "D", "Diff"]
+        # In most tournaments, standings are sorted by Wins, then Diff, then Draws are just informational.
+        sort_columns = ["W", "Diff"] 
     else:
-        # If no draws, don't show the 'D' column
         display_columns = ["W", "L", "Diff"]
         sort_columns = ["W", "Diff"]
 
@@ -233,7 +235,6 @@ def build_standings_table(teams, matches):
     
     df.index.name = "Team"
     return df.reset_index()
-    # --- END: CORRECTED LOGIC ---
 
 def build_week_blocks(dates_str):
     """Groups dates into week-long blocks."""
