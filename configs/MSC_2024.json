@@ -1,0 +1,42 @@
+{
+  "tournament_name": "MSC 2024",
+  "format": "group",
+  "groups": {
+    "Group A": [
+      "Team Flash",
+      "Fire Flux Esports",
+      "EVOS",
+      "RRQ Akira"
+    ],
+    "Group B": [
+      "Selangor Red Giants OG Esports",
+      "See You Soon",
+      "ONIC",
+      "Falcon Esports"
+    ],
+    "Group C": [
+      "Team Liquid PH",
+      "HomeBois",
+      "Team Spirit",
+      "Twisted Minds"
+    ],
+    "Group D": [
+      "Cloud9",
+      "DianFengYaoGuai",
+      "Falcons AP.Bren",
+      "Team Falcons"
+    ]
+  },
+  "brackets": [
+    {
+      "start": 1,
+      "end": 2,
+      "name": "Qualified"
+    },
+    {
+      "start": 3,
+      "end": 4,
+      "name": "Unqualified"
+    }
+  ]
+}
