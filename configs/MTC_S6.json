@@ -1,0 +1,22 @@
+{
+  "tournament_name": "MTC S6",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 4,
+      "name": "Upper Bracket"
+    },
+    {
+      "start": 5,
+      "end": 6,
+      "name": "Lower Bracket"
+    },
+    {
+      "name": "Unqualified",
+      "start": 7,
+      "end": 8
+    }
+  ]
+}

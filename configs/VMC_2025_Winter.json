@@ -1,0 +1,22 @@
+{
+  "tournament_name": "VMC 2025 Winter",
+  "format": "single_table",
+  "groups": {},
+  "brackets": [
+    {
+      "start": 1,
+      "end": 4,
+      "name": "Top 2"
+    },
+    {
+      "start": 5,
+      "end": 6,
+      "name": "Playoffs"
+    },
+    {
+      "start": 7,
+      "end": 8,
+      "name": "Unqualified"
+    }
+  ]
+}
