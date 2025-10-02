@@ -791,35 +791,56 @@ def group_dashboard():
                 st.info("No single external match significantly helps this team's chances.")
 
 # --- Page Router ---
-if 'page_view' not in st.session_state or st.session_state.get('active_tournament') != tournament_name:
+
+# This logic now correctly handles new and existing tournament configurations.
+
+# Only check for saved formats when the page loads or the tournament selection changes.
+if 'active_tournament' not in st.session_state or st.session_state.active_tournament != tournament_name:
     st.session_state.active_tournament = tournament_name
     saved_format = load_tournament_format(tournament_name)
-    if saved_format == 'single_table': st.session_state.page_view = 'single_table_sim'
-    elif saved_format == 'group':
-        st.session_state.page_view = 'group_sim'
-        saved_group_config = load_group_config(tournament_name)
-        if saved_group_config: st.session_state.group_config = saved_group_config
-    else:
-        st.session_state.page_view = 'format_selection'
 
+    # THE CORE FIX: If no format is saved, ALWAYS default to the selection page.
+    if not saved_format:
+        st.session_state.page_view = 'format_selection'
+    # If a format IS saved, determine the correct view.
+    elif saved_format == 'single_table':
+        st.session_state.page_view = 'single_table_sim'
+    elif saved_format == 'group':
+        saved_group_config = load_group_config(tournament_name)
+        # Check if groups have been configured. If not, go to the setup page.
+        if saved_group_config and saved_group_config.get('groups'):
+            st.session_state.group_config = saved_group_config
+            st.session_state.page_view = 'group_sim'
+        else:
+            st.session_state.page_view = 'group_setup'
+
+# This section renders the UI based on the page_view state determined above.
 if st.session_state.page_view == 'format_selection':
     st.title("🏆 Playoff Odds: Tournament Format")
+    st.info(f"First time setting up '{tournament_name}'? Please select its format below.")
     st.write(f"How is **{tournament_name}** structured?")
+    
     col1, col2 = st.columns(2)
-    if col1.button("Single Table League", use_container_width=True):
-        save_tournament_format(tournament_name, 'single_table'); st.session_state.page_view = 'single_table_sim'; st.rerun()
-    if col2.button("Group Stage", use_container_width=True):
-        save_tournament_format(tournament_name, 'group')
-        saved_config = load_group_config(tournament_name)
-        if saved_config: st.session_state.group_config = saved_config; st.session_state.page_view = 'group_sim'
-        else: st.session_state.page_view = 'group_setup'
-        st.rerun()
+    with col1:
+        if st.button("Single Table League", use_container_width=True, type="primary"):
+            save_tournament_format(tournament_name, 'single_table')
+            st.session_state.page_view = 'single_table_sim'
+            st.rerun()
+    with col2:
+        if st.button("Group Stage", use_container_width=True, type="primary"):
+            save_tournament_format(tournament_name, 'group')
+            # For a new setup, immediately go to the group configuration screen.
+            st.session_state.page_view = 'group_setup'
+            st.rerun()
 
 elif st.session_state.page_view == 'group_setup':
     group_setup_ui()
     if st.button("← Back to Format Selection"):
-        st.session_state.page_view = 'format_selection'; st.rerun()
+        st.session_state.page_view = 'format_selection'
+        st.rerun()
+        
 elif st.session_state.page_view == 'single_table_sim':
     single_table_dashboard()
+
 elif st.session_state.page_view == 'group_sim':
     group_dashboard()
