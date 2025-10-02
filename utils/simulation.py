@@ -329,59 +329,124 @@ def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_match
 
 def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
     """
-    Runs the full Monte Carlo simulation for groups and tracks best/worst rank.
+    Runs a Monte Carlo simulation for a tournament with a group stage format.
+
+    Args:
+        groups (dict): A dictionary where keys are group names and values are lists of team names.
+        current_wins (tuple): A tuple of (team, wins) tuples representing the current standings.
+        current_diff (tuple): A tuple of (team, diff) tuples for game score differential.
+        unplayed_matches (tuple): A tuple of (teamA, teamB, date, bestof) tuples for matches to be simulated.
+        forced_outcomes (tuple): A tuple of ((teamA, teamB, date), outcome_code) tuples for user-defined results.
+        brackets (tuple): A tuple of dictionaries, each defining a playoff bracket (e.g., {"name": "Upper Bracket", "start": 1, "end": 4}).
+        n_sim (int): The number of simulation iterations to run.
+        team_to_track (str, optional): A specific team to gather detailed analytics for (best/worst rank). Defaults to None.
+
+    Returns:
+        dict: A dictionary containing the simulation results, including a DataFrame of probabilities,
+              best/worst possible rank for the tracked team, and their rank distribution.
     """
-    teams = [t for g_teams in groups.values() for t in g_teams]
-    finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
+    # Initialize dictionaries to store simulation results
+    team_rank_counts = defaultdict(lambda: defaultdict(int))
+    bracket_counts = {b['name']: defaultdict(int) for b in brackets}
+    best_ranks = defaultdict(lambda: 99) # Initialize best rank to a high number
+    worst_ranks = defaultdict(int)      # Initialize worst rank to zero
 
-    best_rank_in_group = float('inf')
-    worst_rank_in_group = 0
-    
+    # Convert tuples back to dictionaries for efficient lookups inside the loop
+    forced_outcomes_dict = dict(forced_outcomes)
+    current_wins_dict = dict(current_wins)
+    current_diff_dict = dict(current_diff)
+
+    # Main simulation loop
     for _ in range(n_sim):
-        sim_wins = defaultdict(int, current_wins)
-        sim_diff = defaultdict(int, current_diff)
-        for a, b, dt, bo in unplayed_matches:
-            code = forced_outcomes.get((a, b, dt), "random")
-            outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
-            if outcome == "DRAW": continue
-            winner, loser = (a, b) if outcome.startswith("A") else (b, a)
-            num = outcome[1:]; w, l = (int(num[0]), int(num[1]))
-            sim_wins[winner] += 1; sim_diff[winner] += w - l; sim_diff[loser] += l - w
+        # Create a copy of the current standings for this single simulation run
+        sim_wins = defaultdict(int, current_wins_dict)
+        sim_diff = defaultdict(int, current_diff_dict)
 
-        for group_name, group_teams in groups.items():
-            ranked_in_group = sorted(group_teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0), random.random()), reverse=True)
-            for pos, team in enumerate(ranked_in_group):
-                rank_in_group = pos + 1
+        # Iterate through each match that hasn't been played yet
+        for teamA, teamB, match_date, bestof in unplayed_matches:
+            
+            # --- START: CORRECTED LOGIC ---
+
+            # 1. Check if the user has forced an outcome for this specific match.
+            #    If not, the outcome is "random", and we need to simulate it.
+            outcome = forced_outcomes_dict.get((teamA, teamB, match_date), "random")
+
+            # 2. If the outcome is "random", we generate a result.
+            if outcome == "random":
+                # Get all valid, non-random outcomes for the given "best of" format.
+                possible_outcomes = [code for _, code in get_series_outcome_options(teamA, teamB, bestof) if code != "random"]
                 
-                for bracket in brackets:
-                    start = bracket["start"]; end = bracket.get("end") or len(group_teams)
-                    if start <= rank_in_group <= end:
-                        finish_counter[team][bracket["name"]] += 1
-                        break
+                # 3. SAFEGUARD: If no outcomes are possible (due to invalid 'bestof' data),
+                #    skip this match to prevent a crash and log a warning.
+                if not possible_outcomes:
+                    # Optional: print a warning to the console for debugging data issues.
+                    # print(f"Warning: No possible outcomes for match {teamA} vs {teamB} (Bo{bestof}). Skipping.")
+                    continue
+                
+                # Select a random outcome from the valid possibilities.
+                outcome = random.choice(possible_outcomes)
+            
+            # --- END: CORRECTED LOGIC ---
 
+            # Process the definitive outcome (either user-forced or randomly simulated).
+            if outcome == "DRAW":
+                # If the outcome is a draw (e.g., in a Bo2), no team gets a series win.
+                # The score differential is handled by the rules of get_series_outcome_options.
+                continue
+
+            # Determine the winner and loser from the outcome code (e.g., "A21")
+            winner, loser = (teamA, teamB) if outcome.startswith("A") else (teamB, teamA)
+            score_part = outcome[1:]
+            
+            # Update wins and score differential based on the match result
+            if len(score_part) == 2:
+                score_winner, score_loser = int(score_part[0]), int(score_part[1])
+                sim_wins[winner] += 1
+                sim_diff[winner] += score_winner - score_loser
+                sim_diff[loser] += score_loser - score_winner
+
+        # After simulating all matches for one iteration, calculate the final standings.
+        final_standings = {}
+        for group_name, group_teams in groups.items():
+            # Sort teams within each group based on wins, then score differential.
+            group_standings = sorted(
+                group_teams,
+                key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0)),
+                reverse=True
+            )
+            # Record the final rank for each team in this simulation run.
+            for rank, team in enumerate(group_standings, 1):
+                final_standings[team] = (rank, group_name)
+                # If this is the team we are tracking, update its best/worst rank seen so far.
                 if team == team_to_track:
-                    if rank_in_group < best_rank_in_group:
-                        best_rank_in_group = rank_in_group
-                    if rank_in_group > worst_rank_in_group:
-                        worst_rank_in_group = rank_in_group
+                    best_ranks[team] = min(best_ranks[team], rank)
+                    worst_ranks[team] = max(worst_ranks[team], rank)
 
-    prob_data = []
-    for t in teams:
-        row = {"Team": t}
-        for g_name, g_teams in groups.items():
-            if t in g_teams: row["Group"] = g_name; break
-        for bracket in brackets:
-            row[f"{bracket['name']} (%)"] = (finish_counter[t][bracket["name"]] / n_sim) * 100
-        prob_data.append(row)
-    
-    probs_df = pd.DataFrame(prob_data).round(2)
-    
-    results = {"probs_df": probs_df}
-    if team_to_track:
-        results["best_rank"] = best_rank_in_group
-        results["worst_rank"] = worst_rank_in_group
-    
-    return results
+        # Tally the results for this simulation run.
+        for team, (rank, group) in final_standings.items():
+            team_rank_counts[team][rank] += 1
+            # Check which playoff bracket the team falls into based on their rank.
+            for bracket in brackets:
+                if bracket['start'] <= rank <= bracket['end']:
+                    bracket_counts[bracket['name']][team] += 1
+
+    # After all simulations are complete, compile the final probability data.
+    probs_data = []
+    all_teams_in_groups = sorted([team for teams in groups.values() for team in teams])
+    for team in all_teams_in_groups:
+        team_probs = {"Team": team, "Group": next((g for g, t in groups.items() if team in t), "N/A")}
+        # Calculate the percentage chance for each team to land in each bracket.
+        for bracket_name, counts in bracket_counts.items():
+            team_probs[f"{bracket_name} (%)"] = (counts.get(team, 0) / n_sim) * 100
+        probs_data.append(team_probs)
+
+    # Return a dictionary containing the results.
+    return {
+        "probs_df": pd.DataFrame(probs_data),
+        "best_rank": best_ranks.get(team_to_track),
+        "worst_rank": worst_ranks.get(team_to_track),
+        "rank_dist": team_rank_counts.get(team_to_track)
+    }
 
 def _run_single_simulation_instance(teams, initial_wins, initial_diff, unplayed_matches, forced_outcomes):
     """
