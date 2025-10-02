@@ -114,7 +114,7 @@ def group_setup_ui():
     st.write("Assign the teams into their respective groups.")
 
     # Initialize group_config if it doesn't exist or is invalid
- if 'group_config' in st.session_state and isinstance(st.session_state.group_config, dict):
+    if 'group_config' in st.session_state and isinstance(st.session_state.group_config, dict):
         all_teams_in_config = {team for group_list in st.session_state.group_config.get('groups', {}).values() for team in group_list}
         valid_teams = set(teams)
         if not all_teams_in_config.issubset(valid_teams):
