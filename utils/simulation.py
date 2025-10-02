@@ -165,65 +165,67 @@ def get_series_outcome_options(teamA, teamB, bestof):
         return [("Random", "random")]
     return options
 
-def build_standings_table(teams, played_matches):
-    stats = {team: {'match_wins': 0, 'match_count': 0, 'game_wins': 0, 'game_losses': 0} for team in teams}
+def build_standings_table(teams, matches):
+    """
+    Builds a DataFrame representing the tournament standings from a list of matches.
+    Now supports Win-Draw-Lose records.
+    """
+    standings = {
+        team: {"W": 0, "D": 0, "L": 0, "Diff": 0, "Points": 0} for team in teams
+    }
     
-    for m in played_matches:
+    has_draws = False
+
+    for m in matches:
         opps = m.get("match2opponents", [])
-        if len(opps) < 2: continue
-        
-        team_a = opps[0].get('name')
-        team_b = opps[1].get('name')
-        
-        # This check is still useful to prevent errors if a team from a match isn't in the master list
-        if team_a not in stats or team_b not in stats:
+        if len(opps) < 2:
             continue
             
-        score_a = 0
-        score_b = 0
-        for game in m.get("match2games", []):
-            if game.get('winner') == '1':
-                score_a += 1
-            elif game.get('winner') == '2':
-                score_b += 1
+        teamA = opps[0].get('name')
+        teamB = opps[1].get('name')
 
-        stats[team_a]['match_count'] += 1
-        stats[team_b]['match_count'] += 1
-        stats[team_a]['game_wins'] += score_a
-        stats[team_a]['game_losses'] += score_b
-        stats[team_b]['game_wins'] += score_b
-        stats[team_b]['game_losses'] += score_a
+        if not teamA or not teamB or teamA not in teams or teamB not in teams:
+            continue
+
+        scoreA, scoreB = 0, 0
+        for game in m.get("match2games", []):
+            winner_id = str(game.get('winner'))
+            if winner_id == '1':
+                scoreA += 1
+            elif winner_id == '2':
+                scoreB += 1
         
-        if m.get("winner") == "1":
-            stats[team_a]['match_wins'] += 1
-        elif m.get("winner") == "2":
-            stats[team_b]['match_wins'] += 1
-            
-    rows = []
-    # --- MODIFICATION START: The incorrect "if" condition is removed ---
-    # The loop now processes every team, ensuring the table is always fully populated.
-    for team, data in stats.items():
-        mw = data['match_wins']
-        ml = data['match_count'] - data['match_wins']
-        gw = data['game_wins']
-        gl = data['game_losses']
-        diff = gw - gl
-        rows.append({
-            "Team": team, 
-            "Match W-L": f"{mw}-{ml}", 
-            "Game W-L": f"{gw}-{gl}", 
-            "Diff": diff, 
-            "_MW": mw, 
-            "_Diff": diff
-        })
-    # --- MODIFICATION END ---
-            
-    if not rows: return pd.DataFrame()
+        # Update differentials regardless of outcome
+        standings[teamA]["Diff"] += scoreA - scoreB
+        standings[teamB]["Diff"] += scoreB - scoreA
+
+        # Determine Win, Draw, or Loss
+        if m.get("winner") == "1": # Team A wins
+            standings[teamA]["W"] += 1
+            standings[teamB]["L"] += 1
+        elif m.get("winner") == "2": # Team B wins
+            standings[teamB]["W"] += 1
+            standings[teamA]["L"] += 1
+        # It's a draw if there's no winner and games were played (e.g., Bo2 1-1)
+        elif m.get("winner") is None and (scoreA > 0 or scoreB > 0):
+             has_draws = True
+             standings[teamA]["D"] += 1
+             standings[teamB]["D"] += 1
+
+    # Convert to DataFrame
+    df = pd.DataFrame.from_dict(standings, orient='index')
     
-    df = pd.DataFrame(rows).sort_values(by=["_MW", "_Diff"], ascending=[False, False]).reset_index(drop=True)
-    df = df.drop(columns=["_MW", "_Diff"])
-    df.index += 1
-    return df
+    # Create a formatted record string (W-D-L or W-L)
+    if has_draws:
+        df["Record"] = df.apply(lambda row: f"{row['W']}-{row['D']}-{row['L']}", axis=1)
+        df = df[["Record", "Diff"]] # Keep only relevant columns
+    else:
+        df["Record"] = df.apply(lambda row: f"{row['W']}-{row['L']}", axis=1)
+        df = df[["Record", "Diff"]]
+
+    df = df.sort_values(by=["Record", "Diff"], ascending=[False, False])
+    df.index.name = "Team"
+    return df.reset_index()
 
 def build_week_blocks(dates_str):
     """Groups dates into week-long blocks."""
