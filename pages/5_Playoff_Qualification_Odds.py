@@ -251,7 +251,7 @@ def single_table_dashboard():
         # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
         has_winner = m.get("winner") in ("1", "2")
         # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-        is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
+        is_bo2_complete = str(m.get("bestof")) == "2" and num_games_played == 2
     
         if has_winner or is_bo2_complete:
             if cutoff_date and match_date and match_date <= cutoff_date:
@@ -615,7 +615,7 @@ def group_dashboard():
         # Rule 1: It has a definitive winner (for Bo1, Bo3, Bo5).
         has_winner = m.get("winner") in ("1", "2")
         # Rule 2 (Your suggestion): It's a Bo2 and 2 games have been played.
-        is_bo2_complete = m.get("bestof") == "2" and num_games_played == 2
+        is_bo2_complete = str(m.get("bestof")) == "2" and num_games_played == 2
     
         if has_winner or is_bo2_complete:
             if cutoff_date and match_date and match_date <= cutoff_date:
