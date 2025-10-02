@@ -365,7 +365,7 @@ def single_table_dashboard():
         has_predictions = any(v != "random" for v in forced_outcomes.values())
         st.write("**Current Standings (including predictions)**" if has_predictions else "**Current Standings**")
         standings_df = build_standings_table(teams, display_matches)
-        st.dataframe(standings_df, use_container_width=True)
+        st.dataframe(standings_df, use_container_width=True, hide_index=True)
     with res_col2:
         st.write("**Playoff Probabilities**")
         if not standings_df.empty:
@@ -724,7 +724,7 @@ def group_dashboard():
             
             with g_col1:
                 standings_df = build_standings_table(group_teams, display_matches)
-                st.dataframe(standings_df, use_container_width=True)
+                st.dataframe(standings_df, use_container_width=True, hide_index=True)
             with g_col2:
                 group_probs = sim_results_df[sim_results_df['Group'] == group_name].drop(columns=['Group'])
                 if not standings_df.empty:
