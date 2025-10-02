@@ -165,13 +165,15 @@ def get_series_outcome_options(teamA, teamB, bestof):
         return [("Random", "random")]
     return options
 
+# In utils/simulation.py
+
 def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
-    Now supports Win-Draw-Lose records.
+    Now displays W, D, L, and Diff as separate columns.
     """
     standings = {
-        team: {"W": 0, "D": 0, "L": 0, "Diff": 0, "Points": 0} for team in teams
+        team: {"W": 0, "D": 0, "L": 0, "Diff": 0} for team in teams
     }
     
     has_draws = False
@@ -206,7 +208,7 @@ def build_standings_table(teams, matches):
         elif m.get("winner") == "2": # Team B wins
             standings[teamB]["W"] += 1
             standings[teamA]["L"] += 1
-        # It's a draw if there's no winner and games were played (e.g., Bo2 1-1)
+        # It's a draw if there's no winner and games were played
         elif m.get("winner") is None and (scoreA > 0 or scoreB > 0):
              has_draws = True
              standings[teamA]["D"] += 1
@@ -215,17 +217,23 @@ def build_standings_table(teams, matches):
     # Convert to DataFrame
     df = pd.DataFrame.from_dict(standings, orient='index')
     
-    # Create a formatted record string (W-D-L or W-L)
+    # --- START: CORRECTED LOGIC ---
+    # Define the columns to display and the columns to sort by
     if has_draws:
-        df["Record"] = df.apply(lambda row: f"{row['W']}-{row['D']}-{row['L']}", axis=1)
-        df = df[["Record", "Diff"]] # Keep only relevant columns
+        display_columns = ["W", "D", "L", "Diff"]
+        sort_columns = ["W", "D", "Diff"]
     else:
-        df["Record"] = df.apply(lambda row: f"{row['W']}-{row['L']}", axis=1)
-        df = df[["Record", "Diff"]]
+        # If no draws, don't show the 'D' column
+        display_columns = ["W", "L", "Diff"]
+        sort_columns = ["W", "Diff"]
 
-    df = df.sort_values(by=["Record", "Diff"], ascending=[False, False])
+    # Select and sort the DataFrame
+    df = df[display_columns]
+    df = df.sort_values(by=sort_columns, ascending=False)
+    
     df.index.name = "Team"
     return df.reset_index()
+    # --- END: CORRECTED LOGIC ---
 
 def build_week_blocks(dates_str):
     """Groups dates into week-long blocks."""
