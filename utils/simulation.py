@@ -482,3 +482,35 @@ def _run_single_simulation_instance(teams, initial_wins, initial_diff, unplayed_
     # Rank teams by wins, then diff, with a random tie-breaker
     ranked = sorted(teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0), random.random()), reverse=True)
     return ranked
+
+CONFIG_DIR = "configs"
+
+def get_config_path(tournament_name, config_type):
+    """Generates the file path for a given tournament and config type."""
+    safe_filename = "".join(c for c in tournament_name if c.isalnum() or c in (' ', '_', '-')).rstrip()
+    return os.path.join(CONFIG_DIR, f"{safe_filename}_{config_type}.json")
+
+def delete_tournament_configs(tournament_name):
+    """
+    Deletes all configuration files associated with a specific tournament.
+    """
+    if not os.path.exists(CONFIG_DIR):
+        return # No directory, so nothing to delete.
+
+    configs_to_delete = [
+        get_config_path(tournament_name, 'format'),
+        get_config_path(tournament_name, 'groups'),
+        get_config_path(tournament_name, 'brackets')
+    ]
+    
+    deleted_files = []
+    for path in configs_to_delete:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                deleted_files.append(os.path.basename(path))
+            except OSError as e:
+                # Optional: log an error if a file can't be deleted
+                print(f"Error deleting file {path}: {e}")
+    
+    return deleted_files
