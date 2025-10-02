@@ -170,8 +170,7 @@ def get_series_outcome_options(teamA, teamB, bestof):
 def build_standings_table(teams, matches):
     """
     Builds a DataFrame representing the tournament standings from a list of matches.
-    Displays separate records for overall Matches (W-D-L) and individual Games (W-L).
-    The final table is 1-indexed for correct ranking display.
+    Displays a 1-based Rank column.
     """
     standings = {
         team: {
@@ -184,31 +183,24 @@ def build_standings_table(teams, matches):
 
     for m in matches:
         opps = m.get("match2opponents", [])
-        if len(opps) < 2:
-            continue
-            
+        if len(opps) < 2: continue
         teamA = opps[0].get('name')
         teamB = opps[1].get('name')
 
         if not teamA or not teamB or teamA not in teams or teamB not in teams:
             continue
 
-        # Calculate individual game scores
         scoreA, scoreB = 0, 0
         for game in m.get("match2games", []):
             winner_id = str(game.get('winner'))
-            if winner_id == '1':
-                scoreA += 1
-            elif winner_id == '2':
-                scoreB += 1
+            if winner_id == '1': scoreA += 1
+            elif winner_id == '2': scoreB += 1
         
-        # Update Games W-L record for both teams
         standings[teamA]["Games W"] += scoreA
         standings[teamA]["Games L"] += scoreB
         standings[teamB]["Games W"] += scoreB
         standings[teamB]["Games L"] += scoreA
 
-        # Determine Match outcome (Win, Draw, or Loss)
         is_bo2_draw = str(m.get("bestof")) == "2" and scoreA == 1 and scoreB == 1
 
         if is_bo2_draw:
@@ -222,13 +214,10 @@ def build_standings_table(teams, matches):
             standings[teamB]["Matches W"] += 1
             standings[teamA]["Matches L"] += 1
 
-    # Convert the standings dictionary to a pandas DataFrame
     df = pd.DataFrame.from_dict(standings, orient='index')
     
-    # Create the "Games Record" column (always W-L)
     df["Games (W-L)"] = df.apply(lambda row: f"{row['Games W']}-{row['Games L']}", axis=1)
     
-    # Conditionally create the "Matches Record" column
     if has_draws:
         df["Matches (W-D-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches D']}-{row['Matches L']}", axis=1)
         display_columns = ["Matches (W-D-L)", "Games (W-L)"]
@@ -238,18 +227,15 @@ def build_standings_table(teams, matches):
         display_columns = ["Matches (W-L)", "Games (W-L)"]
         sort_columns = ["Matches W", "Games W", "Games L"]
 
-    # Sort the DataFrame by the appropriate columns
     df = df.sort_values(by=sort_columns, ascending=False)
     
-    # Select only the final display columns to show in the UI
     df = df[display_columns]
-    
     df.index.name = "Team"
     df = df.reset_index()
 
     # --- START: FINAL FIX ---
-    # Overwrite the default 0-based index with a 1-based index for ranking.
-    df.index = np.arange(1, len(df) + 1)
+    # Insert a new column at the beginning named 'Rank' with 1-based numbering.
+    df.insert(0, 'Rank', np.arange(1, len(df) + 1))
     # --- END: FINAL FIX ---
     
     return df
