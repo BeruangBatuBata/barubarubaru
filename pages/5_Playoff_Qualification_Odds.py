@@ -101,8 +101,7 @@ def group_setup_ui():
     default_num_groups = len(current_groups) if len(current_groups) > 0 else 2
     
     num_groups = st.number_input("Number of Groups", min_value=1, max_value=8, value=default_num_groups)
-    
-    num_groups = st.number_input("Number of Groups", 1, 8, len(st.session_state.group_config.get('groups', {})))
+
     current_groups = st.session_state.group_config.get('groups', {})
     if len(current_groups) != num_groups:
         new_groups = {}; sorted_keys = sorted(current_groups.keys())
