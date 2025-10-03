@@ -12,6 +12,22 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
     st.warning("Please select and load tournament data from the sidebar on the Overview page.")
     st.stop()
 
+# This function was missing from this file, causing the NameError.
+def format_df_for_display(df):
+    """Formats a DataFrame for better display in Streamlit."""
+    if df.empty:
+        return df
+    
+    # Create display columns
+    df["WR %"] = df["Wins"] / df["Picks"] * 100
+    df["GP"] = df["Picks"]
+    
+    # Format and select final columns
+    formatted_df = df[["Hero", "GP", "WR %"]].copy()
+    formatted_df["WR %"] = formatted_df["WR %"].map("{:.1f}%".format)
+    
+    return formatted_df.sort_values(by="GP", ascending=False).reset_index(drop=True)
+
 # --- Main Page Logic ---
 parsed_matches = st.session_state['parsed_matches']
 selected_stage = "All Stages"
