@@ -9,6 +9,7 @@ from utils.simulation import (
     load_tournament_format, save_tournament_format, delete_tournament_configs
 )
 from utils.sidebar import build_sidebar
+import json
 
 st.set_page_config(layout="wide", page_title="Playoff Qualification Odds")
 build_sidebar()
@@ -75,29 +76,33 @@ teams = sorted(list(set(
 
 # --- Cached Simulation Functions ---
 @st.cache_data(show_spinner="Running single-table simulation...")
-def cached_single_table_sim(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+def cached_single_table_sim(teams, played_matches_json, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+    played_matches = [json.loads(m) for m in played_matches_json]
     return run_monte_carlo_simulation(
-        list(teams), 
+        list(teams),
+        played_matches,
         dict(current_wins), 
         dict(current_diff), 
         list(unplayed_matches), 
         dict(forced_outcomes), 
         [dict(b) for b in brackets], 
         n_sim,
-        team_to_track=team_to_track  # Pass the new argument through
+        team_to_track=team_to_track
     )
 
 @st.cache_data(show_spinner="Running group stage simulation...")
-def cached_group_sim(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+def cached_group_sim(groups, played_matches_json, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+    played_matches = [json.loads(m) for m in played_matches_json]
     return run_monte_carlo_simulation_groups(
         groups, 
+        played_matches,
         dict(current_wins), 
         dict(current_diff), 
         list(unplayed_matches), 
         dict(forced_outcomes), 
         [dict(b) for b in brackets], 
         n_sim,
-        team_to_track=team_to_track  # Pass the new argument through
+        team_to_track=team_to_track
     )
 
 # --- UI Functions ---
@@ -107,13 +112,10 @@ def get_teams_from_match(match):
     teamB = opps[1].get('name', 'Team B') if len(opps) > 1 else 'Team B'
     return teamA, teamB
 
-# In pages/5_Playoff_Qualification_Odds.py
-
 def group_setup_ui():
     st.header(f"Group Configuration for {tournament_name}")
     st.write("Assign the teams into their respective groups.")
 
-    # Initialize group_config if it doesn't exist or is invalid
     if 'group_config' not in st.session_state or not isinstance(st.session_state.group_config, dict) or not st.session_state.group_config.get('groups'):
         st.session_state.group_config = {'groups': {'Group A': [], 'Group B': []}}
 
@@ -122,7 +124,6 @@ def group_setup_ui():
     
     num_groups = st.number_input("Number of Groups", min_value=1, max_value=8, value=default_num_groups)
 
-    # Adjust the number of groups in the config if the user changes the number input
     if len(current_groups) != num_groups:
         new_groups = {}
         sorted_keys = sorted(current_groups.keys())
@@ -134,58 +135,34 @@ def group_setup_ui():
 
     st.markdown("---")
     
-    # --- START: FINAL CORRECTED LOGIC ---
-
-    # Flag to check if a rerun is needed after the full UI is drawn.
     rerun_needed = False
-
     cols = st.columns(num_groups)
-    
-    # Get a set of all teams that have been assigned to any group
     all_assigned_teams = {team for group_list in current_groups.values() for team in group_list}
 
-    # Loop and draw ALL group selection boxes first.
     for i, (group_name, group_teams) in enumerate(current_groups.items()):
         with cols[i]:
             st.subheader(group_name)
-
-            # Store the current state of the group before rendering the widget
             teams_before_change = list(group_teams)
-
-            # Determine which teams are assigned to OTHER groups
             teams_in_other_groups = all_assigned_teams - set(teams_before_change)
-
-            # The options for this multiselect are any team not in another group
             available_options = [team for team in teams if team not in teams_in_other_groups]
             
-            # Render the multiselect widget
             selected_teams = st.multiselect(
                 f"Teams in {group_name}",
                 options=available_options,
                 default=teams_before_change,
                 key=f"group_{group_name}"
             )
-
-            # Update the state with the potentially new selection
             current_groups[group_name] = selected_teams
-
-            # If a change was made, set the flag to True.
             if set(teams_before_change) != set(selected_teams):
                 rerun_needed = True
-
-    # After the loop is finished and the entire UI is drawn, check the flag.
     if rerun_needed:
         st.rerun()
 
-    # --- END: FINAL CORRECTED LOGIC ---
-
-    # Display unassigned teams
     assigned_teams_final = {team for group in current_groups.values() for team in group}
     unassigned_teams = [team for team in teams if team not in assigned_teams_final]
     if unassigned_teams:
         st.warning(f"Unassigned Teams: {', '.join(unassigned_teams)}")
 
-    # Save button
     if st.button("Save & Continue", type="primary"):
         save_group_config(tournament_name, st.session_state.group_config)
         st.success("Group configuration saved!")
@@ -196,7 +173,6 @@ def single_table_dashboard():
     st.header(f"Simulation for {tournament_name} (Single Table)")
     st.button("← Change Tournament Format", on_click=lambda: st.session_state.update(page_view='format_selection'))
     
-    # --- Top Control Layout ---
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     
@@ -231,19 +207,17 @@ def single_table_dashboard():
             if st.button("Add Bracket", key="s_add_bracket"): st.session_state.current_brackets.append({"name": "New Bracket", "start": 1, "end": len(teams)}); st.rerun()
             if st.button("Save Brackets", type="primary", key="s_save_brackets"): save_bracket_config(tournament_name, {"brackets": st.session_state.current_brackets}); st.success("Brackets saved!"); st.cache_data.clear()
 
-    # --- Initialize Session State for Team Selector ---
     all_teams_sorted = sorted(teams)
     if 'analyzer_team' not in st.session_state:
         st.session_state.analyzer_team = all_teams_sorted[0]
 
-    # --- Corrected Data Preparation Logic ---
     played = []
     unplayed = []
     cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
     
     for m in simulation_matches:
         is_played = False
-        if cutoff_date: # If a cutoff date is set (not Week 0)
+        if cutoff_date:
             match_date = pd.to_datetime(m.get("date")).date() if m.get("date") else None
             has_winner = m.get("winner") in ("1", "2")
             is_bo2_complete = str(m.get("bestof")) == "2" and len(m.get("match2games", [])) == 2
@@ -256,7 +230,6 @@ def single_table_dashboard():
         else:
             unplayed.append(m)
 
-    # --- Upcoming Matches (What-If Scenarios) UI ---
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
     if not unplayed:
@@ -299,10 +272,10 @@ def single_table_dashboard():
                                     for opt_label, opt_code in options:
                                         if opt_label == selected: forced_outcomes[match_key] = opt_code; break
 
-    # --- Data prep for simulation ---
     current_wins, current_diff = defaultdict(int), defaultdict(int)
     for m in played:
         teamA, teamB = get_teams_from_match(m)
+        if m.get("winner") not in ("1", "2"): continue
         winner_idx = int(m["winner"]) - 1
         winner, loser = (teamA, teamB) if winner_idx == 0 else (teamB, teamA)
         current_wins[winner] += 1
@@ -312,25 +285,29 @@ def single_table_dashboard():
             elif game.get('winner') is not None: score_loser += 1
         current_diff[winner] += score_winner - score_loser
         current_diff[loser] += score_loser - score_winner
+    
     unplayed_tuples = []
     for m in unplayed:
         teamA, teamB = get_teams_from_match(m)
         unplayed_tuples.append((teamA, teamB, m.get("date"), m.get("bestof", 3)))
 
-    # --- A SINGLE, UNIFIED SIMULATION CALL for base results ---
     with st.spinner(f"Running simulation for {st.session_state.analyzer_team}..."):
         sim_results_data = cached_single_table_sim(
-            tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), 
-            tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())), 
+            tuple(teams), 
+            tuple(json.dumps(m, sort_keys=True) for m in played),
+            tuple(sorted(current_wins.items())), 
+            tuple(sorted(current_diff.items())), 
+            tuple(unplayed_tuples), 
+            tuple(sorted(forced_outcomes.items())), 
             tuple(frozenset(b.items()) for b in st.session_state.current_brackets), 
-            n_sim, team_to_track=st.session_state.analyzer_team
+            n_sim, 
+            team_to_track=st.session_state.analyzer_team
         )
     
     sim_results_df = sim_results_data['probs_df']
     best_rank = sim_results_data.get('best_rank')
     worst_rank = sim_results_data.get('worst_rank')
 
-    # --- DISPLAY RESULTS ---
     st.markdown("---"); st.subheader("Results")
     res_col1, res_col2 = st.columns(2)
     with res_col1:
@@ -367,7 +344,6 @@ def single_table_dashboard():
             sorted_probs_df = sim_results_df
         st.dataframe(sorted_probs_df, use_container_width=True, hide_index=True)
 
-    # --- DISPLAY ANALYSIS ---
     st.markdown("---"); st.subheader(f"🔍 Key Scenario Analysis")
     selected_team_analysis = st.selectbox("Select a team to analyze:", options=all_teams_sorted, key='analyzer_team')
     
@@ -377,7 +353,8 @@ def single_table_dashboard():
     
     if st.button(f"Run Deeper Analysis for {selected_team_analysis}"):
         
-        # --- 'Win and In' Analysis ---
+        played_json = tuple(json.dumps(m, sort_keys=True) for m in played)
+
         with st.spinner(f"Calculating 'Win and In' scenario..."):
             all_bracket_names_win_in = [b['name'] for b in st.session_state.current_brackets]
             if not all_bracket_names_win_in:
@@ -392,7 +369,7 @@ def single_table_dashboard():
                     else: forced_wins[match_key] = "B20"
 
                 win_out_data = cached_single_table_sim(
-                    tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), 
+                    tuple(teams), played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), 
                     tuple(unplayed_tuples), tuple(sorted(forced_wins.items())), 
                     tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
 
@@ -405,7 +382,6 @@ def single_table_dashboard():
                     with metric_cols[i]:
                         st.metric(label=f"Chance for '{bracket_name}'", value=f"{win_out_prob:.2f}%")
 
-        # --- Most Important Match Analysis ---
         with st.spinner(f"Finding most important match..."):
             team_unplayed_importance = [m for m in unplayed if selected_team_analysis in get_teams_from_match(m)]
             all_brackets_importance = sorted([b for b in st.session_state.current_brackets], key=lambda x: x.get('start', 99))
@@ -426,8 +402,8 @@ def single_table_dashboard():
                 else:
                     forced_win_scenario[match_key], forced_loss_scenario[match_key] = "B20", "A20"
                 
-                win_df = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_win_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
-                loss_df = cached_single_table_sim(tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_loss_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
+                win_df = cached_single_table_sim(tuple(teams), played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_win_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
+                loss_df = cached_single_table_sim(tuple(teams), played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_loss_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
 
                 win_prob_cumulative, loss_prob_cumulative = 0, 0
                 for bracket_name in positive_brackets_importance:
@@ -467,7 +443,6 @@ def single_table_dashboard():
             else:
                 st.info("No upcoming matches to analyze for this team.")
         
-        # --- "Who to Root For" Analysis ---
         with st.spinner(f"Finding critical external matches..."):
             external_matches = [m for m in unplayed if selected_team_analysis not in get_teams_from_match(m)]
             
@@ -495,7 +470,7 @@ def single_table_dashboard():
                     forced_scenario[match_key] = outcome_code
 
                     scenario_df = cached_single_table_sim(
-                        tuple(teams), tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())),
+                        tuple(teams), played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())),
                         tuple(unplayed_tuples), tuple(sorted(forced_scenario.items())),
                         tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim
                     )['probs_df']
@@ -543,7 +518,6 @@ def group_dashboard():
     groups = group_config.get('groups', {})
     all_group_teams = sorted([team for group_teams in groups.values() for team in group_teams])
 
-    # --- Top Control Layout ---
     st.markdown("---"); st.subheader("Simulation Controls")
     col1, col2, col3 = st.columns([2, 1, 1])
     
@@ -588,11 +562,9 @@ def group_dashboard():
                     editable_groups[group_name] = new_teams
                 if st.button("Save Group Changes"): st.session_state.group_config['groups'] = editable_groups; save_group_config(tournament_name, st.session_state.group_config); st.success("Group configuration updated!"); st.cache_data.clear(); st.rerun()
 
-    # --- Initialize Session State for Team Selector ---
     if 'analyzer_team_groups' not in st.session_state and all_group_teams:
         st.session_state.analyzer_team_groups = all_group_teams[0]
 
-    # --- Corrected Data Preparation Logic ---
     played = []
     unplayed = []
     cutoff_date = week_blocks[cutoff_week_idx][-1] if cutoff_week_idx != -1 and week_blocks else None
@@ -612,7 +584,6 @@ def group_dashboard():
         else:
             unplayed.append(m)
 
-    # --- Upcoming Matches (What-If Scenarios) UI ---
     st.markdown("---"); st.subheader("Upcoming Matches (What-If Scenarios)")
     forced_outcomes = {}
     if not unplayed:
@@ -655,10 +626,10 @@ def group_dashboard():
                                     for opt_label, opt_code in options:
                                         if opt_label == selected: forced_outcomes[match_key] = opt_code; break
 
-    # --- Data prep for simulation ---
     current_wins, current_diff = defaultdict(int), defaultdict(int)
     for m in played:
         teamA, teamB = get_teams_from_match(m)
+        if m.get("winner") not in ("1", "2"): continue
         winner_idx = int(m["winner"]) - 1
         winner, loser = (teamA, teamB) if winner_idx == 0 else (teamB, teamA)
         current_wins[winner] += 1
@@ -667,25 +638,29 @@ def group_dashboard():
             if str(game.get('winner')) == str(winner_idx + 1): s_w += 1
             elif game.get('winner') is not None: s_l += 1
         current_diff[winner] += s_w - s_l; current_diff[loser] += s_l - s_w
+    
     unplayed_tuples = []
     for m in unplayed:
         teamA, teamB = get_teams_from_match(m)
         unplayed_tuples.append((teamA, teamB, m.get("date"), m.get("bestof", 3)))
 
-    # --- A SINGLE, UNIFIED SIMULATION CALL for base results ---
     with st.spinner(f"Running simulation and analysis for {st.session_state.analyzer_team_groups}..."):
         sim_results_data = cached_group_sim(
-            groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())),
-            tuple(unplayed_tuples), tuple(sorted(forced_outcomes.items())),
+            groups, 
+            tuple(json.dumps(m, sort_keys=True) for m in played),
+            tuple(sorted(current_wins.items())), 
+            tuple(sorted(current_diff.items())),
+            tuple(unplayed_tuples), 
+            tuple(sorted(forced_outcomes.items())),
             tuple(frozenset(b.items()) for b in st.session_state.current_brackets),
-            n_sim, team_to_track=st.session_state.analyzer_team_groups
+            n_sim, 
+            team_to_track=st.session_state.analyzer_team_groups
         )
     
     sim_results_df = sim_results_data['probs_df']
     best_rank = sim_results_data.get('best_rank')
     worst_rank = sim_results_data.get('worst_rank')
     
-    # --- DISPLAY RESULTS ---
     st.markdown("---"); st.subheader("Results")
     display_matches = played.copy()
     for m in unplayed:
@@ -736,7 +711,6 @@ def group_dashboard():
                     sorted_group_probs = group_probs
                 st.dataframe(sorted_group_probs, use_container_width=True, hide_index=True)
 
-    # --- DISPLAY ANALYSIS ---
     st.markdown("---"); st.subheader(f"🔍 Key Scenario Analysis")
     selected_team_analysis = st.selectbox(
         "Select a team to analyze:", 
@@ -750,7 +724,8 @@ def group_dashboard():
     
     if st.button(f"Run Deeper Analysis for {selected_team_analysis}"):
         
-        # --- 'Win and In' Analysis ---
+        played_json = tuple(json.dumps(m, sort_keys=True) for m in played)
+
         with st.spinner(f"Calculating 'Win and In' scenario..."):
             all_bracket_names_win_in = [b['name'] for b in st.session_state.current_brackets]
             if not all_bracket_names_win_in:
@@ -765,7 +740,7 @@ def group_dashboard():
                     else: forced_wins[match_key] = "B20"
 
                 win_out_data = cached_group_sim(
-                    groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())),
+                    groups, played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())),
                     tuple(unplayed_tuples), tuple(sorted(forced_wins.items())),
                     tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
 
@@ -778,7 +753,6 @@ def group_dashboard():
                     with metric_cols[i]:
                         st.metric(label=f"Chance for '{bracket_name}'", value=f"{win_out_prob:.2f}%")
 
-        # --- Most Important Match Analysis ---
         with st.spinner(f"Finding most important match..."):
             team_unplayed_importance = [m for m in unplayed if selected_team_analysis in get_teams_from_match(m)]
             all_brackets_importance = sorted([b for b in st.session_state.current_brackets], key=lambda x: x.get('start', 99))
@@ -795,8 +769,8 @@ def group_dashboard():
                     forced_win_scenario[match_key], forced_loss_scenario[match_key] = "A20", "B20"
                 else:
                     forced_win_scenario[match_key], forced_loss_scenario[match_key] = "B20", "A20"
-                win_df = cached_group_sim(groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_win_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
-                loss_df = cached_group_sim(groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_loss_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
+                win_df = cached_group_sim(groups, played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_win_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
+                loss_df = cached_group_sim(groups, played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_loss_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
                 win_prob_cumulative, loss_prob_cumulative = 0, 0
                 for bracket_name in positive_brackets_importance:
                     col_name = f"{bracket_name} (%)"
@@ -826,13 +800,11 @@ def group_dashboard():
             else:
                 st.info("No upcoming matches to analyze for this team.")
         
-        # --- "Who to Root For" Analysis ---
         with st.spinner(f"Finding critical external matches..."):
             external_matches = [m for m in unplayed if selected_team_analysis not in get_teams_from_match(m)]
             all_brackets_root_for = sorted([b for b in st.session_state.current_brackets], key=lambda x: x.get('start', 99))
             positive_brackets_root_for = [b['name'] for b in all_brackets_root_for if "unqualified" not in b['name'].lower() and "relegation" not in b['name'].lower()]
-            narrative_target_brackets, narrative_target_name = [], "overall playoff"
-            base_cumulative_prob_overall = sum(sim_results_df.loc[sim_results_df['Team'] == selected_team_analysis, f"{b} (%)"].iloc[0] for b in positive_brackets_root_for)
+            base_cumulative_prob_overall = sum(sim_results_df.loc[sim_results_df['Team'] == selected_team_analysis, f"{b['name']} (%)"].iloc[0] for b in positive_brackets_root_for)
             best_external_impact, best_external_match_info = 0.01, None
 
             for match in external_matches:
@@ -842,8 +814,8 @@ def group_dashboard():
                     if outcome_code == "random": continue
                     forced_scenario = forced_outcomes.copy()
                     forced_scenario[(teamA, teamB, match.get('date'))] = outcome_code
-                    scenario_df = cached_group_sim(groups, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
-                    scenario_cumulative_prob = sum(scenario_df.loc[scenario_df['Team'] == selected_team_analysis, f"{b} (%)"].iloc[0] for b in positive_brackets_root_for)
+                    scenario_df = cached_group_sim(groups, played_json, tuple(sorted(current_wins.items())), tuple(sorted(current_diff.items())), tuple(unplayed_tuples), tuple(sorted(forced_scenario.items())), tuple(frozenset(b.items()) for b in st.session_state.current_brackets), n_sim)['probs_df']
+                    scenario_cumulative_prob = sum(scenario_df.loc[scenario_df['Team'] == selected_team_analysis, f"{b['name']} (%)"].iloc[0] for b in positive_brackets_root_for)
                     impact = scenario_cumulative_prob - base_cumulative_prob_overall
                     if impact > best_external_impact:
                         best_external_impact = impact
@@ -866,30 +838,22 @@ def group_dashboard():
                 st.info("No single external match significantly helps this team's chances.")
 
 # --- Page Router ---
-
-# This logic now correctly handles new and existing tournament configurations.
-
-# Only check for saved formats when the page loads or the tournament selection changes.
 if 'active_tournament' not in st.session_state or st.session_state.active_tournament != tournament_name:
     st.session_state.active_tournament = tournament_name
     saved_format = load_tournament_format(tournament_name)
 
-    # THE CORE FIX: If no format is saved, ALWAYS default to the selection page.
     if not saved_format:
         st.session_state.page_view = 'format_selection'
-    # If a format IS saved, determine the correct view.
     elif saved_format == 'single_table':
         st.session_state.page_view = 'single_table_sim'
     elif saved_format == 'group':
         saved_group_config = load_group_config(tournament_name)
-        # Check if groups have been configured. If not, go to the setup page.
         if saved_group_config and saved_group_config.get('groups'):
             st.session_state.group_config = saved_group_config
             st.session_state.page_view = 'group_sim'
         else:
             st.session_state.page_view = 'group_setup'
 
-# This section renders the UI based on the page_view state determined above.
 if st.session_state.page_view == 'format_selection':
     st.title("🏆 Playoff Odds: Tournament Format")
     st.info(f"First time setting up '{tournament_name}'? Please select its format below.")
@@ -904,7 +868,6 @@ if st.session_state.page_view == 'format_selection':
     with col2:
         if st.button("Group Stage", use_container_width=True, type="primary"):
             save_tournament_format(tournament_name, 'group')
-            # For a new setup, immediately go to the group configuration screen.
             st.session_state.page_view = 'group_setup'
             st.rerun()
 
