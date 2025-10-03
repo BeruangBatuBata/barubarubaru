@@ -3,12 +3,12 @@ import numpy as np
 import random
 import json
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 import math
 from math import comb
+from itertools import groupby
 
-# --- UNIFIED CONFIGURATION FUNCTIONS ---
-
+# --- [UNCHANGED CODE FROM get_permanent_config_path to build_week_blocks] ---
 def get_permanent_config_path(tournament_name):
     """Generate the standard path for a permanent tournament config file."""
     return os.path.join("configs", f"{tournament_name.replace(' ', '_')}.json")
@@ -137,8 +137,7 @@ def save_group_config(tournament_name, config):
         return True
     except Exception:
         return False
-
-# --- HELPER FUNCTIONS ---
+        
 def get_series_outcome_options(teamA, teamB, bestof):
     """
     Generates a list of possible outcomes for a series given the format.
@@ -146,122 +145,49 @@ def get_series_outcome_options(teamA, teamB, bestof):
     options = [("Random", "random")]
     try:
         bo = int(bestof)
-        # Handle Best of 1
         if bo == 1:
             options.extend([(f"{teamA} Wins 1-0", "A10"), (f"{teamB} Wins 1-0", "B10")])
-        # Handle Best of 2 (with Draws)
         elif bo == 2:
             options.extend([(f"{teamA} Wins 2-0", "A20"), ("Series is a 1-1 Draw", "DRAW"), (f"{teamB} Wins 2-0", "B20")])
-        # Handle Best of 3
         elif bo == 3:
             options.extend([(f"{teamA} Wins 2-0", "A20"), (f"{teamA} Wins 2-1", "A21"), (f"{teamB} Wins 2-0", "B20"), (f"{teamB} Wins 2-1", "B21")])
-        # Handle Best of 5
         elif bo == 5:
             options.extend([(f"{teamA} Wins 3-0", "A30"), (f"{teamA} Wins 3-1", "A31"), (f"{teamA} Wins 3-2", "A32"), (f"{teamB} Wins 3-0", "B30"), (f"{teamB} Wins 3-1", "B31"), (f"{teamB} Wins 3-2", "B32")])
-        # ADDED: Handle Best of 7
         elif bo == 7:
             options.extend([(f"{teamA} Wins 4-0", "A40"), (f"{teamA} Wins 4-1", "A41"), (f"{teamA} Wins 4-2", "A42"), (f"{teamA} Wins 4-3", "A43"), (f"{teamB} Wins 4-0", "B40"), (f"{teamB} Wins 4-1", "B41"), (f"{teamB} Wins 4-2", "B42"), (f"{teamB} Wins 4-3", "B43")])
     except (ValueError, TypeError):
-        # If 'bestof' is not a valid number, return only the Random option
         return [("Random", "random")]
     return options
 
-# In utils/simulation.py
-
-def build_standings_table(teams, matches):
-    """
-    Builds a DataFrame representing the tournament standings from a list of matches.
-    Displays a 1-based Rank column and a game score differential ('Diff') column.
-    """
-    standings = {
-        team: {
-            "Matches W": 0, "Matches D": 0, "Matches L": 0,
-            "Games W": 0, "Games L": 0
-        } for team in teams
-    }
-    
-    has_draws = False
-
-    for m in matches:
-        opps = m.get("match2opponents", [])
-        if len(opps) < 2: continue
-        teamA = opps[0].get('name')
-        teamB = opps[1].get('name')
-
-        if not teamA or not teamB or teamA not in teams or teamB not in teams:
-            continue
-
-        scoreA, scoreB = 0, 0
-        for game in m.get("match2games", []):
-            winner_id = str(game.get('winner'))
-            if winner_id == '1': scoreA += 1
-            elif winner_id == '2': scoreB += 1
-        
-        standings[teamA]["Games W"] += scoreA
-        standings[teamA]["Games L"] += scoreB
-        standings[teamB]["Games W"] += scoreB
-        standings[teamB]["Games L"] += scoreA
-
-        is_bo2_draw = str(m.get("bestof")) == "2" and scoreA == 1 and scoreB == 1
-
-        if is_bo2_draw:
-            has_draws = True
-            standings[teamA]["Matches D"] += 1
-            standings[teamB]["Matches D"] += 1
-        elif m.get("winner") == "1":
-            standings[teamA]["Matches W"] += 1
-            standings[teamB]["Matches L"] += 1
-        elif m.get("winner") == "2":
-            standings[teamB]["Matches W"] += 1
-            standings[teamA]["Matches L"] += 1
-
-    df = pd.DataFrame.from_dict(standings, orient='index')
-    
-    # Calculate the new 'Diff' column
-    df["Diff"] = df["Games W"] - df["Games L"]
-    df["Games (W-L)"] = df.apply(lambda row: f"{row['Games W']}-{row['Games L']}", axis=1)
-    
-    if has_draws:
-        df["Matches (W-D-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches D']}-{row['Matches L']}", axis=1)
-        # Add 'Diff' to the display and sorting columns
-        display_columns = ["Matches (W-D-L)", "Games (W-L)", "Diff"]
-        sort_columns = ["Matches W", "Matches D", "Diff", "Games W"]
-    else:
-        df["Matches (W-L)"] = df.apply(lambda row: f"{row['Matches W']}-{row['Matches L']}", axis=1)
-        # Add 'Diff' to the display and sorting columns
-        display_columns = ["Matches (W-L)", "Games (W-L)", "Diff"]
-        sort_columns = ["Matches W", "Diff", "Games W"]
-
-    # Use a stable sort to respect initial order for tie-breaking where all values are equal
-    df = df.sort_values(by=sort_columns, ascending=False, kind='stable')
-    
-    df = df[display_columns]
-    df.index.name = "Team"
-    df = df.reset_index()
-
-    # Insert the 'Rank' column at the beginning
-    df.insert(0, 'Rank', np.arange(1, len(df) + 1))
-    
-    return df
+def calculate_series_score_probs(p_win, n_games):
+    if p_win is None or not (0 <= p_win <= 1): return {}
+    p_lose = 1 - p_win
+    games_to_win = (n_games // 2) + 1
+    probs = {}
+    for games_lost in range(games_to_win):
+        total_games_played = games_to_win + games_lost
+        if total_games_played > n_games: continue
+        combinations = comb(total_games_played - 1, games_to_win - 1)
+        probability = combinations * (p_win ** games_to_win) * (p_lose ** games_lost)
+        probs[f"{games_to_win}-{games_lost}"] = probability
+    for games_won in range(games_to_win):
+        total_games_played = games_to_win + games_won
+        if total_games_played > n_games: continue
+        combinations = comb(total_games_played - 1, games_to_win - 1)
+        probability = combinations * (p_lose ** games_to_win) * (p_win ** games_won)
+        probs[f"{games_won}-{games_to_win}"] = probability
+    return probs
 
 def build_week_blocks(dates_str):
-    """Groups dates into week-long blocks."""
     if not dates_str: return []
-    
-    # Convert string dates to datetime.date objects for comparison
     dates = []
     for d_str in dates_str:
         try:
-            # pd.to_datetime is robust and handles various formats
             dates.append(pd.to_datetime(d_str).date())
         except (ValueError, TypeError):
-            continue # Skip if a date string is invalid
-    
+            continue
     if not dates: return []
-
-    # Sort the converted dates
     dates = sorted(list(set(dates)))
-
     blocks = [[dates[0]]]
     for prev, curr in zip(dates, dates[1:]):
         if (curr - prev).days <= 2:
@@ -270,224 +196,183 @@ def build_week_blocks(dates_str):
             blocks.append([curr])
     return blocks
 
-### --- MODIFIED --- ###
-def calculate_series_score_probs(p_win, n_games):
+# --- MODIFIED: Tie-breaker functions now follow the new 4-step logic ---
+
+def resolve_ties_h2h_gamediff(tied_teams, all_matches_data):
     """
-    Calculates the probabilities of all possible series scores in a best-of-n series.
-    p_win: The probability of the 'main' team (e.g., Blue Team) winning a single game.
-    n_games: The total number of games in the series (e.g., 3 for a Bo3).
+    Resolves ties between a group of teams based on the game difference
+    from their head-to-head matches.
     """
-    if p_win is None or not (0 <= p_win <= 1):
-        return {}
+    if len(tied_teams) <= 1:
+        return tied_teams
 
-    p_lose = 1 - p_win
-    games_to_win = (n_games // 2) + 1
-    probs = {}
-
-    # Calculate probabilities for the Blue team winning the series
-    for games_lost in range(games_to_win):
-        total_games_played = games_to_win + games_lost
-        if total_games_played > n_games:
-            continue
-        
-        combinations = comb(total_games_played - 1, games_to_win - 1)
-        probability = combinations * (p_win ** games_to_win) * (p_lose ** games_lost)
-        
-        score = f"{games_to_win}-{games_lost}"
-        probs[score] = probability
-
-    # Calculate probabilities for the Red team winning the series
-    for games_won in range(games_to_win):
-        total_games_played = games_to_win + games_won
-        if total_games_played > n_games:
-            continue
-
-        combinations = comb(total_games_played - 1, games_to_win - 1)
-        probability = combinations * (p_lose ** games_to_win) * (p_win ** games_won)
-        
-        score = f"{games_won}-{games_to_win}"
-        probs[score] = probability
-
-    return probs
-### --- END MODIFIED --- ###
-
-# --- SIMULATION ENGINES ---
-def run_monte_carlo_simulation(teams, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
-    """
-    Runs the full Monte Carlo simulation and tracks best/worst rank for a specific team.
-    """
-    finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
+    h2h_diff = Counter()
+    for match in all_matches_data:
+        teamA, teamB, _, sA, sB = match
+        if teamA in tied_teams and teamB in tied_teams:
+            h2h_diff[teamA] += sA - sB
+            h2h_diff[teamB] += sB - sA
     
-    # Initialize trackers for the new feature
-    best_rank = len(teams)
-    worst_rank = 1
+    # Sort the group by their H2H game difference.
+    # A random element is added as a final, definitive tie-breaker if H2H diff is also identical.
+    return sorted(tied_teams, key=lambda t: (h2h_diff[t], random.random()), reverse=True)
+
+
+def build_standings_table(teams, matches):
+    standings_data = {t: {"Matches W": 0, "Matches L": 0, "Games W": 0, "Games L": 0} for t in teams}
+    all_matches_simple = []
+
+    for m in matches:
+        opps = m.get("match2opponents", [])
+        if len(opps) < 2 or m.get("winner") not in ("1", "2"): continue
+        tA, tB = opps[0].get('name'), opps[1].get('name')
+        if not tA or not tB or tA not in teams or tB not in teams: continue
+
+        winner, loser = (tA, tB) if m["winner"] == "1" else (tB, tA)
+        standings_data[winner]["Matches W"] += 1
+        standings_data[loser]["Matches L"] += 1
+        
+        sA, sB = 0, 0
+        for g in m.get("match2games", []):
+            if str(g.get('winner')) == '1': sA += 1
+            elif str(g.get('winner')) == '2': sB += 1
+        standings_data[tA]["Games W"] += sA; standings_data[tA]["Games L"] += sB
+        standings_data[tB]["Games W"] += sB; standings_data[tB]["Games L"] += sA
+        all_matches_simple.append((tA, tB, winner, sA, sB))
+
+    # Step 1 & 2: Sort by Series Wins, then Overall Game Diff
+    sorted_teams = sorted(teams, key=lambda t: (
+        standings_data[t]["Matches W"], 
+        standings_data[t]["Games W"] - standings_data[t]["Games L"]
+    ), reverse=True)
+    
+    final_ranked_order = []
+    # Group by the first two tie-breakers
+    for _, g in groupby(sorted_teams, key=lambda t: (standings_data[t]["Matches W"], standings_data[t]["Games W"] - standings_data[t]["Games L"])):
+        group = list(g)
+        if len(group) > 1:
+            # Step 3: If a tie remains, resolve it with H2H Game Diff
+            resolved_group = resolve_ties_h2h_gamediff(group, all_matches_simple)
+            final_ranked_order.extend(resolved_group)
+        else:
+            final_ranked_order.extend(group)
+
+    df = pd.DataFrame.from_dict(standings_data, orient='index')
+    df["Diff"] = df["Games W"] - df["Games L"]
+    df = df.reindex(final_ranked_order)
+    df["Matches (W-L)"] = df.apply(lambda r: f"{r['Matches W']}-{r['Matches L']}", axis=1)
+    df["Games (W-L)"] = df.apply(lambda r: f"{r['Games W']}-{r['Games L']}", axis=1)
+    df = df[["Matches (W-L)", "Games (W-L)", "Diff"]].reset_index().rename(columns={"index": "Team"})
+    df.insert(0, 'Rank', np.arange(1, len(df) + 1))
+    return df
+
+def run_monte_carlo_simulation(teams, played_matches, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+    finish_counter = {t: {b["name"]: 0 for b in brackets} for t in teams}
+    best_rank, worst_rank = len(teams), 1
+
+    played_matches_simple = []
+    for m in played_matches:
+        opps = m.get("match2opponents", [])
+        if len(opps) < 2 or m.get("winner") not in ("1", "2"): continue
+        tA, tB = opps[0].get('name'), opps[1].get('name')
+        winner = tA if m["winner"] == "1" else tB
+        sA, sB = 0,0 
+        for g in m.get("match2games", []):
+            if str(g.get('winner')) == '1': sA += 1
+            elif str(g.get('winner')) == '2': sB += 1
+        played_matches_simple.append((tA, tB, winner, sA, sB))
 
     for _ in range(n_sim):
-        sim_wins = defaultdict(int, current_wins)
-        sim_diff = defaultdict(int, current_diff)
+        sim_wins, sim_diff = defaultdict(int, current_wins), defaultdict(int, current_diff)
+        simulated_matches = []
         for a, b, dt, bo in unplayed_matches:
             code = forced_outcomes.get((a, b, dt), "random")
             outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
-            if outcome == "DRAW": continue
+            if not outcome or outcome == "DRAW": continue
             winner, loser = (a, b) if outcome.startswith("A") else (b, a)
-            num = outcome[1:]; w, l = (int(num[0]), int(num[1])) if len(num) == 2 else (int(num), 0)
+            w, l = int(outcome[1]), int(outcome[2])
             sim_wins[winner] += 1; sim_diff[winner] += w - l; sim_diff[loser] += l - w
+            simulated_matches.append((a, b, winner, w, l))
         
-        ranked_teams = sorted(teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0), random.random()), reverse=True)
-        
-        for pos, team in enumerate(ranked_teams):
+        all_sim_matches = played_matches_simple + simulated_matches
+
+        sorted_teams = sorted(teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0)), reverse=True)
+        final_ranked_teams = []
+        for _, g in groupby(sorted_teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0))):
+            group = list(g)
+            if len(group) > 1:
+                final_ranked_teams.extend(resolve_ties_h2h_gamediff(group, all_sim_matches))
+            else:
+                final_ranked_teams.extend(group)
+
+        for pos, team in enumerate(final_ranked_teams):
             rank = pos + 1
-            
             for bracket in brackets:
-                start, end = bracket["start"], bracket.get("end") or len(teams)
-                if start <= rank <= end:
-                    finish_counter[team][bracket["name"]] += 1
-                    break
-            
+                if bracket["start"] <= rank <= (bracket.get("end") or len(teams)):
+                    finish_counter[team][bracket["name"]] += 1; break
             if team == team_to_track:
-                if rank < best_rank:
-                    best_rank = rank
-                if rank > worst_rank:
-                    worst_rank = rank
+                best_rank, worst_rank = min(best_rank, rank), max(worst_rank, rank)
 
-    rows = []
-    for t in teams:
-        row = {"Team": t}
-        for bracket in brackets:
-            row[f"{bracket['name']} (%)"] = (finish_counter[t].get(bracket["name"], 0) / n_sim) * 100
-        rows.append(row)
-    
-    probs_df = pd.DataFrame(rows).round(2)
-
-    results = {"probs_df": probs_df}
-    if team_to_track:
-        results["best_rank"] = best_rank
-        results["worst_rank"] = worst_rank
-        
-    return results
+    rows = [{"Team": t, **{f"{b['name']} (%)": (finish_counter[t].get(b["name"], 0) / n_sim) * 100 for b in brackets}} for t in teams]
+    return {"probs_df": pd.DataFrame(rows).round(2), "best_rank": best_rank, "worst_rank": worst_rank}
 
 
-def run_monte_carlo_simulation_groups(groups, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
-    """
-    Runs a Monte Carlo simulation for a tournament with a group stage format.
+def run_monte_carlo_simulation_groups(groups, played_matches, current_wins, current_diff, unplayed_matches, forced_outcomes, brackets, n_sim, team_to_track=None):
+    all_teams = [t for g in groups.values() for t in g]
+    finish_counter = {t: {b["name"]: 0 for b in brackets} for t in all_teams}
+    best_ranks, worst_ranks = defaultdict(lambda: 99), defaultdict(int)
 
-    Args:
-        groups (dict): A dictionary where keys are group names and values are lists of team names.
-        current_wins (tuple): A tuple of (team, wins) tuples representing the current standings.
-        current_diff (tuple): A tuple of (team, diff) tuples for game score differential.
-        unplayed_matches (tuple): A tuple of (teamA, teamB, date, bestof) tuples for matches to be simulated.
-        forced_outcomes (tuple): A tuple of ((teamA, teamB, date), outcome_code) tuples for user-defined results.
-        brackets (tuple): A tuple of dictionaries, each defining a playoff bracket (e.g., {"name": "Upper Bracket", "start": 1, "end": 4}).
-        n_sim (int): The number of simulation iterations to run.
-        team_to_track (str, optional): A specific team to gather detailed analytics for (best/worst rank). Defaults to None.
+    played_matches_simple = []
+    for m in played_matches:
+        opps = m.get("match2opponents", [])
+        if len(opps) < 2 or m.get("winner") not in ("1", "2"): continue
+        tA, tB = opps[0].get('name'), opps[1].get('name')
+        winner = tA if m["winner"] == "1" else tB
+        sA, sB = 0,0
+        for g in m.get("match2games", []):
+            if str(g.get('winner')) == '1': sA += 1
+            elif str(g.get('winner')) == '2': sB += 1
+        played_matches_simple.append((tA, tB, winner, sA, sB))
 
-    Returns:
-        dict: A dictionary containing the simulation results, including a DataFrame of probabilities,
-              best/worst possible rank for the tracked team, and their rank distribution.
-    """
-    # Initialize dictionaries to store simulation results
-    team_rank_counts = defaultdict(lambda: defaultdict(int))
-    bracket_counts = {b['name']: defaultdict(int) for b in brackets}
-    best_ranks = defaultdict(lambda: 99) # Initialize best rank to a high number
-    worst_ranks = defaultdict(int)      # Initialize worst rank to zero
-
-    # Convert tuples back to dictionaries for efficient lookups inside the loop
-    forced_outcomes_dict = dict(forced_outcomes)
-    current_wins_dict = dict(current_wins)
-    current_diff_dict = dict(current_diff)
-
-    # Main simulation loop
     for _ in range(n_sim):
-        # Create a copy of the current standings for this single simulation run
-        sim_wins = defaultdict(int, current_wins_dict)
-        sim_diff = defaultdict(int, current_diff_dict)
-
-        # Iterate through each match that hasn't been played yet
-        for teamA, teamB, match_date, bestof in unplayed_matches:
-            
-            # --- START: CORRECTED LOGIC ---
-
-            # 1. Check if the user has forced an outcome for this specific match.
-            #    If not, the outcome is "random", and we need to simulate it.
-            outcome = forced_outcomes_dict.get((teamA, teamB, match_date), "random")
-
-            # 2. If the outcome is "random", we generate a result.
-            if outcome == "random":
-                # Get all valid, non-random outcomes for the given "best of" format.
-                possible_outcomes = [code for _, code in get_series_outcome_options(teamA, teamB, bestof) if code != "random"]
-                
-                # 3. SAFEGUARD: If no outcomes are possible (due to invalid 'bestof' data),
-                #    skip this match to prevent a crash and log a warning.
-                if not possible_outcomes:
-                    # Optional: print a warning to the console for debugging data issues.
-                    # print(f"Warning: No possible outcomes for match {teamA} vs {teamB} (Bo{bestof}). Skipping.")
-                    continue
-                
-                # Select a random outcome from the valid possibilities.
-                outcome = random.choice(possible_outcomes)
-            
-            # --- END: CORRECTED LOGIC ---
-
-            # Process the definitive outcome (either user-forced or randomly simulated).
-            if outcome == "DRAW":
-                # If the outcome is a draw (e.g., in a Bo2), no team gets a series win.
-                # The score differential is handled by the rules of get_series_outcome_options.
-                continue
-
-            # Determine the winner and loser from the outcome code (e.g., "A21")
-            winner, loser = (teamA, teamB) if outcome.startswith("A") else (teamB, teamA)
-            score_part = outcome[1:]
-            
-            # Update wins and score differential based on the match result
-            if len(score_part) == 2:
-                score_winner, score_loser = int(score_part[0]), int(score_part[1])
-                sim_wins[winner] += 1
-                sim_diff[winner] += score_winner - score_loser
-                sim_diff[loser] += score_loser - score_winner
-
-        # After simulating all matches for one iteration, calculate the final standings.
+        sim_wins, sim_diff = defaultdict(int, current_wins), defaultdict(int, current_diff)
+        simulated_matches = []
+        for a, b, dt, bo in unplayed_matches:
+            code = forced_outcomes.get((a, b, dt), "random")
+            outcome = random.choice([c for _, c in get_series_outcome_options(a, b, bo) if c != "random"]) if code == "random" else code
+            if not outcome or outcome == "DRAW": continue
+            winner, loser = (a, b) if outcome.startswith("A") else (b, a)
+            w, l = int(outcome[1]), int(outcome[2])
+            sim_wins[winner] += 1; sim_diff[winner] += w - l; sim_diff[loser] += l - w
+            simulated_matches.append((a, b, winner, w, l))
+        
+        all_sim_matches = played_matches_simple + simulated_matches
+        
         final_standings = {}
         for group_name, group_teams in groups.items():
-            # Sort teams within each group based on wins, then score differential.
-            group_standings = sorted(
-                group_teams,
-                key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0)),
-                reverse=True
-            )
-            # Record the final rank for each team in this simulation run.
+            sorted_teams = sorted(group_teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0)), reverse=True)
+            group_standings = []
+            for _, g in groupby(sorted_teams, key=lambda t: (sim_wins.get(t, 0), sim_diff.get(t, 0))):
+                group = list(g)
+                if len(group) > 1:
+                    group_standings.extend(resolve_ties_h2h_gamediff(group, all_sim_matches))
+                else:
+                    group_standings.extend(group)
+            
             for rank, team in enumerate(group_standings, 1):
                 final_standings[team] = (rank, group_name)
-                # If this is the team we are tracking, update its best/worst rank seen so far.
                 if team == team_to_track:
-                    best_ranks[team] = min(best_ranks[team], rank)
-                    worst_ranks[team] = max(worst_ranks[team], rank)
+                    best_ranks[team], worst_ranks[team] = min(best_ranks[team], rank), max(worst_ranks[team], rank)
 
-        # Tally the results for this simulation run.
-        for team, (rank, group) in final_standings.items():
-            team_rank_counts[team][rank] += 1
-            # Check which playoff bracket the team falls into based on their rank.
+        for team, (rank, _) in final_standings.items():
             for bracket in brackets:
-                if bracket['start'] <= rank <= bracket['end']:
-                    bracket_counts[bracket['name']][team] += 1
+                if bracket['start'] <= rank <= (bracket.get('end') or len(all_teams)):
+                    finish_counter[team][bracket["name"]] += 1; break
+    
+    rows = [{"Team": t, "Group": next((g for g, ts in groups.items() if t in ts), "N/A"), **{f"{b['name']} (%)": (finish_counter[t].get(b["name"], 0) / n_sim) * 100 for b in brackets}} for t in all_teams]
+    return {"probs_df": pd.DataFrame(rows).round(2), "best_rank": best_ranks.get(team_to_track), "worst_rank": worst_ranks.get(team_to_track)}
 
-    # After all simulations are complete, compile the final probability data.
-    probs_data = []
-    all_teams_in_groups = sorted([team for teams in groups.values() for team in teams])
-    for team in all_teams_in_groups:
-        team_probs = {"Team": team, "Group": next((g for g, t in groups.items() if team in t), "N/A")}
-        # Calculate the percentage chance for each team to land in each bracket.
-        for bracket_name, counts in bracket_counts.items():
-            team_probs[f"{bracket_name} (%)"] = (counts.get(team, 0) / n_sim) * 100
-        probs_data.append(team_probs)
-
-    # Return a dictionary containing the results.
-    return {
-        "probs_df": pd.DataFrame(probs_data),
-        "best_rank": best_ranks.get(team_to_track),
-        "worst_rank": worst_ranks.get(team_to_track),
-        "rank_dist": team_rank_counts.get(team_to_track)
-    }
-
+# --- [UNCHANGED CODE FROM _run_single_simulation_instance to the end of the file] ---
 def _run_single_simulation_instance(teams, initial_wins, initial_diff, unplayed_matches, forced_outcomes):
     """
     Simulates one possible future for a single table format and returns the ranked teams.
