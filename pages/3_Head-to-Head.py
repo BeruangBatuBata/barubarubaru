@@ -14,12 +14,16 @@ if 'parsed_matches' not in st.session_state or not st.session_state['parsed_matc
 
 # This function was missing from this file, causing the NameError.
 def format_df_for_display(df):
-    """Formats a DataFrame for better display in Streamlit."""
-    if df.empty:
-        return df
-    
+    """
+    Formats a DataFrame for better display in Streamlit, now with robust error handling.
+    """
+    # If the DataFrame is empty or missing essential columns, return an empty, correctly formatted DataFrame.
+    if df.empty or "Picks" not in df.columns or "Wins" not in df.columns:
+        return pd.DataFrame(columns=["Hero", "GP", "WR %"])
+
     # Create display columns
-    df["WR %"] = df["Wins"] / df["Picks"] * 100
+    # Use a safe division to prevent errors if a hero has 0 picks.
+    df["WR %"] = df.apply(lambda row: (row["Wins"] / row["Picks"] * 100) if row["Picks"] > 0 else 0, axis=1)
     df["GP"] = df["Picks"]
     
     # Format and select final columns
