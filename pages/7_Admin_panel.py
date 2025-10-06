@@ -52,7 +52,7 @@ st.title("👑 Admin Panel")
 if check_password():
     st.success("Login successful!")
     
-    # --- SECTION 1: AI MODEL TRAINING (MODIFIED with Error Handling) ---
+    # --- SECTION 1: AI MODEL TRAINING ---
     st.header("AI Model Training")
     st.info("Use this tool to re-train the Drafting Assistant's AI model using the tournament data currently loaded in the application.")
     
@@ -69,20 +69,18 @@ if check_password():
                 st.success(f"✅ Training job sent successfully! Task ID: {task.id}")
                 st.info("You can monitor the status below.")
             except Exception as e:
-                st.error("❌ Failed to send task to the queue. The 'waiter' can't reach the 'kitchen'.")
-                st.error("This usually means the Streamlit app cannot connect to the Redis URL. Check your Streamlit secrets.")
+                st.error("❌ Failed to send task to the queue.")
                 st.exception(e)
 
     st.markdown("---")
     
-    # --- SECTION 2: TASK MONITORING (MODIFIED with Download Links) ---
+    # --- SECTION 2: TASK MONITORING with Download Links ---
     st.header("Task Monitoring")
     task_id_input = st.text_input("Enter Task ID to check status:", value=st.session_state.get('last_task_id', ''))
 
     if st.button("Check Status"):
         if task_id_input:
             try:
-                # Pass the configured celery_app to ensure it knows where to look for results
                 result = AsyncResult(task_id_input, app=celery_app)
                 
                 st.write(f"**Status for Task ID:** `{task_id_input}`")
@@ -93,7 +91,7 @@ if check_password():
                         task_result = result.get()
                         st.json(task_result)
 
-                        # --- NEW SECTION TO DISPLAY DOWNLOAD LINKS ---
+                        # --- THIS SECTION DISPLAYS THE DOWNLOAD BUTTONS ---
                         if 'download_urls' in task_result:
                             st.subheader("Download Trained Model Files")
                             model_url = task_result['download_urls'].get('model_url')
@@ -107,7 +105,7 @@ if check_password():
                                     st.link_button("📥 Download draft_assets.json", assets_url)
                             else:
                                 st.error("Could not retrieve download URLs from the task result.")
-                        # --- END OF NEW SECTION ---
+                        # --- END OF DOWNLOAD SECTION ---
 
                     else:
                         st.error(f"**Status:** {result.state}")
@@ -116,14 +114,14 @@ if check_password():
                 else:
                     st.info(f"**Status:** {result.state} (The job is still running or waiting in the queue...)")
             except Exception as e:
-                st.error("❌ Could not check task status. Is the Task ID correct and is the backend reachable?")
+                st.error("❌ Could not check task status.")
                 st.exception(e)
         else:
             st.warning("Please enter a Task ID to check.")
 
     st.markdown("---")
 
-    # --- SECTION 3: CONFIGURATION MANAGEMENT (UNCHANGED) ---
+    # --- SECTION 3: CONFIGURATION MANAGEMENT (Unchanged) ---
     st.header("Tournament Configuration Management")
     st.info("Select tournaments, preview their current configurations one-by-one, and download them as a single zip file.")
 
