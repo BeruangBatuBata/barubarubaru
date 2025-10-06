@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.drafting_ai_tasks import train_ai_model_task
 from celery.result import AsyncResult
+from celery_config import app as celery_app # <-- Import the configured app
 from utils.sidebar import build_sidebar
 import os
 import json
@@ -13,25 +14,33 @@ from utils.simulation import load_unified_config
 st.set_page_config(layout="wide", page_title="Admin Panel")
 build_sidebar()
 
-# --- Authentication Logic (Unchanged) ---
+# --- Authentication Logic ---
 def check_password():
     """Returns `True` if the user had a correct password."""
+
     def password_entered():
+        """Checks whether a password entered by the user is correct."""
         if (
-            st.session_state.get("username") in ["admin", "beruang"]
-            and st.session_state.get("password") == "batu"
+            st.session_state["username"] in ["admin", "beruang"]
+            and st.session_state["password"] == "batu"
         ):
             st.session_state["password_correct"] = True
+            del st.session_state["password"]
+            del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
-            
+
     if "password_correct" not in st.session_state:
         st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
         return False
     elif not st.session_state["password_correct"]:
         st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
         st.error("😕 User not known or password incorrect")
         return False
     else:
@@ -62,7 +71,7 @@ if check_password():
             except Exception as e:
                 st.error("❌ Failed to send task to the queue. The 'waiter' can't reach the 'kitchen'.")
                 st.error("This usually means the Streamlit app cannot connect to the Redis URL. Check your Streamlit secrets.")
-                st.exception(e) # This will print the full technical error details to the screen
+                st.exception(e)
 
     st.markdown("---")
     
@@ -73,7 +82,9 @@ if check_password():
     if st.button("Check Status"):
         if task_id_input:
             try:
-                result = AsyncResult(task_id_input)
+                # Pass the configured celery_app to ensure it knows where to look for results
+                result = AsyncResult(task_id_input, app=celery_app)
+                
                 st.write(f"**Status for Task ID:** `{task_id_input}`")
                 if result.ready():
                     if result.successful():
