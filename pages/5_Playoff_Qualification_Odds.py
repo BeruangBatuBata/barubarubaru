@@ -289,7 +289,7 @@ def single_table_dashboard():
                 current_diff=tuple(sorted(current_diff.items())), 
                 unplayed_matches_tuples=tuple(unplayed_tuples), 
                 forced_outcomes=tuple(sorted(forced_outcomes.items())), 
-                brackets=st.session_state.current_brackets, # <--- CORRECTED LINE
+                brackets=tuple(tuple(sorted(b.items())) for b in st.session_state.current_brackets), # <--- CORRECTED LINE
                 n_sim=n_sim
             )
             st.session_state.main_sim_task_id = task.id
@@ -346,7 +346,7 @@ def single_table_dashboard():
                     unplayed_tuples=tuple(unplayed_tuples),
                     unplayed_matches_full=unplayed, # Send the full match dicts
                     forced_outcomes=tuple(sorted(forced_outcomes.items())),
-                    brackets=st.session_state.current_brackets,
+                    brackets=tuple(tuple(sorted(b.items())) for b in st.session_state.current_brackets), # <--- CORRECTED LINE
                     n_sim=n_sim,
                     selected_team_analysis=selected_team_analysis,
                     base_results_df_dict=sim_results_df.to_dict() # Pass base results
@@ -628,7 +628,7 @@ def group_dashboard():
                 current_diff=tuple(sorted(current_diff.items())),
                 unplayed_matches_tuples=tuple(unplayed_tuples),
                 forced_outcomes=tuple(sorted(forced_outcomes.items())),
-                brackets=st.session_state.current_brackets, # <--- CORRECTED LINE
+                brackets=tuple(tuple(sorted(b.items())) for b in st.session_state.current_brackets), # <--- CORRECTED LINE
                 n_sim=n_sim
             )
             st.session_state.main_sim_task_id = task.id
@@ -715,7 +715,7 @@ def group_dashboard():
                     unplayed_tuples=tuple(unplayed_tuples),
                     unplayed_matches_full=unplayed,
                     forced_outcomes=tuple(sorted(forced_outcomes.items())),
-                    brackets=st.session_state.current_brackets,
+                    brackets=tuple(tuple(sorted(b.items())) for b in st.session_state.current_brackets), # <--- CORRECTED LINE
                     n_sim=n_sim,
                     selected_team_analysis=selected_team_analysis,
                     base_results_df_dict=sim_results_df.to_dict(),
