@@ -11,3 +11,4 @@ st-pages
 plotly
 celery
 redis
+cloudinary
