@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.drafting_ai_tasks import train_ai_model_task
 from celery.result import AsyncResult
-from celery_config import app as celery_app # <-- Import the configured app
+from celery_config import app as celery_app # Import the configured app
 from utils.sidebar import build_sidebar
 import os
 import json
@@ -75,7 +75,7 @@ if check_password():
 
     st.markdown("---")
     
-    # --- SECTION 2: TASK MONITORING (MODIFIED) ---
+    # --- SECTION 2: TASK MONITORING (MODIFIED with Download Links) ---
     st.header("Task Monitoring")
     task_id_input = st.text_input("Enter Task ID to check status:", value=st.session_state.get('last_task_id', ''))
 
@@ -90,7 +90,25 @@ if check_password():
                     if result.successful():
                         st.success(f"**Status:** {result.state}")
                         st.write("**Result:**")
-                        st.json(result.result)
+                        task_result = result.get()
+                        st.json(task_result)
+
+                        # --- NEW SECTION TO DISPLAY DOWNLOAD LINKS ---
+                        if 'download_urls' in task_result:
+                            st.subheader("Download Trained Model Files")
+                            model_url = task_result['download_urls'].get('model_url')
+                            assets_url = task_result['download_urls'].get('assets_url')
+                            
+                            if model_url and assets_url:
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.link_button("📥 Download draft_predictor.json", model_url)
+                                with col2:
+                                    st.link_button("📥 Download draft_assets.json", assets_url)
+                            else:
+                                st.error("Could not retrieve download URLs from the task result.")
+                        # --- END OF NEW SECTION ---
+
                     else:
                         st.error(f"**Status:** {result.state}")
                         st.write("**Error Details:**")
