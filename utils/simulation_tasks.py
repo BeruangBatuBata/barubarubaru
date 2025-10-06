@@ -22,22 +22,23 @@ def run_single_table_simulation_task(teams, played_matches_json, current_wins, c
     All complex objects are passed as JSON-serializable types.
     """
     played_matches = [json.loads(m) for m in played_matches_json]
-    
-    # Reconstruct complex objects from tuples/lists
+
+    # Convert brackets from tuple of tuples back to list of dicts
     unhashed_brackets = [dict(b) for b in brackets]
 
-return run_monte_carlo_simulation(
-    list(teams),
-    played_matches,
-    dict(current_wins),
-    dict(current_diff),
-    list(unplayed_matches_tuples),
-    dict(forced_outcomes),
-    unhashed_brackets, # <--- CORRECTED LINE
-    n_sim,
-    team_to_track=team_to_track
-)
+    return run_monte_carlo_simulation(
+        list(teams),
+        played_matches,
+        dict(current_wins),
+        dict(current_diff),
+        list(unplayed_matches_tuples),
+        dict(forced_outcomes),
+        unhashed_brackets, # Use the corrected list
+        n_sim,
+        team_to_track=team_to_track
+    )
 
+# beruangbatubata/barubarubaru/barubarubaru-c62b52c86038cecedd2dda40e096dca331cad981/utils/simulation_tasks.py
 @app.task
 def run_group_simulation_task(groups, played_matches_json, current_wins, current_diff, unplayed_matches_tuples, forced_outcomes, brackets, n_sim, team_to_track=None):
     """
@@ -45,19 +46,20 @@ def run_group_simulation_task(groups, played_matches_json, current_wins, current
     """
     played_matches = [json.loads(m) for m in played_matches_json]
 
+    # Convert brackets from tuple of tuples back to list of dicts
     unhashed_brackets = [dict(b) for b in brackets]
 
-return run_monte_carlo_simulation_groups(
-    groups,
-    played_matches,
-    dict(current_wins),
-    dict(current_diff),
-    list(unplayed_matches_tuples),
-    dict(forced_outcomes),
-    unhashed_brackets, # <--- CORRECTED LINE
-    n_sim,
-    team_to_track=team_to_track
-)
+    return run_monte_carlo_simulation_groups(
+        groups,
+        played_matches,
+        dict(current_wins),
+        dict(current_diff),
+        list(unplayed_matches_tuples),
+        dict(forced_outcomes),
+        unhashed_brackets, # Use the corrected list
+        n_sim,
+        team_to_track=team_to_track
+    )
 
 # --- NEW TASK ADDED BELOW ---
 @app.task(bind=True)
