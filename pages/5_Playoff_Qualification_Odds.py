@@ -796,7 +796,7 @@ if 'active_tournament' not in st.session_state or st.session_state.active_tourna
     st.session_state.main_sim_task_id = None
     st.session_state.analysis_task_id = None
     st.session_state.main_sim_results = None
-    st.session_sate.analysis_results = None
+    st.session_state.analysis_results = None
     saved_format = load_tournament_format(tournament_name)
 
     if not saved_format:
