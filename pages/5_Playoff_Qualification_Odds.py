@@ -8,6 +8,7 @@ import json
 from celery.result import AsyncResult
 
 # --- Local Utility Imports ---
+from celery_config import app
 from utils.simulation import (
     get_series_outcome_options, build_standings_table,
     load_bracket_config, save_bracket_config, build_week_blocks,
@@ -114,7 +115,7 @@ def display_task_status(task_id, task_name="Task", result_key=None):
     if not task_id:
         return False
 
-    result = AsyncResult(task_id)
+    result = app.AsyncResult(task_id) # <--- CORRECTED LINE
     
     if result.ready():
         if result.successful():
