@@ -288,7 +288,7 @@ def single_table_dashboard():
                 current_diff=tuple(sorted(current_diff.items())), 
                 unplayed_matches_tuples=tuple(unplayed_tuples), 
                 forced_outcomes=tuple(sorted(forced_outcomes.items())), 
-                brackets=tuple(frozenset(b.items()) for b in st.session_state.current_brackets), 
+                brackets=st.session_state.current_brackets, # <--- CORRECTED LINE
                 n_sim=n_sim
             )
             st.session_state.main_sim_task_id = task.id
@@ -627,7 +627,7 @@ def group_dashboard():
                 current_diff=tuple(sorted(current_diff.items())),
                 unplayed_matches_tuples=tuple(unplayed_tuples),
                 forced_outcomes=tuple(sorted(forced_outcomes.items())),
-                brackets=tuple(frozenset(b.items()) for b in st.session_state.current_brackets),
+                brackets=st.session_state.current_brackets, # <--- CORRECTED LINE
                 n_sim=n_sim
             )
             st.session_state.main_sim_task_id = task.id
