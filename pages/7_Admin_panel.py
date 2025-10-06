@@ -1,7 +1,8 @@
 import streamlit as st
+import time
 from utils.drafting_ai_tasks import train_ai_model_task
 from celery.result import AsyncResult
-from celery_config import app as celery_app # Import the configured app
+from celery_config import app as celery_app
 from utils.sidebar import build_sidebar
 import os
 import json
@@ -14,33 +15,25 @@ from utils.simulation import load_unified_config
 st.set_page_config(layout="wide", page_title="Admin Panel")
 build_sidebar()
 
-# --- Authentication Logic ---
+# --- Authentication Logic (Unchanged) ---
 def check_password():
     """Returns `True` if the user had a correct password."""
-
     def password_entered():
-        """Checks whether a password entered by the user is correct."""
         if (
-            st.session_state["username"] in ["admin", "beruang"]
-            and st.session_state["password"] == "batu"
+            st.session_state.get("username") in ["admin", "beruang"]
+            and st.session_state.get("password") == "batu"
         ):
             st.session_state["password_correct"] = True
-            del st.session_state["password"]
-            del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
-
+            
     if "password_correct" not in st.session_state:
         st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input(
-            "Password", type="password", on_change=password_entered, key="password"
-        )
+        st.text_input("Password", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
         st.text_input("Username", on_change=password_entered, key="username")
-        st.text_input(
-            "Password", type="password", on_change=password_entered, key="password"
-        )
+        st.text_input("Password", type="password", on_change=password_entered, key="password")
         st.error("😕 User not known or password incorrect")
         return False
     else:
@@ -54,74 +47,84 @@ if check_password():
     
     # --- SECTION 1: AI MODEL TRAINING ---
     st.header("AI Model Training")
-    st.info("Use this tool to re-train the Drafting Assistant's AI model using the tournament data currently loaded in the application.")
+    st.info("Use this tool to re-train the model. The process will run in the background.")
     
     if 'pooled_matches' not in st.session_state or not st.session_state['pooled_matches']:
-        st.error("No tournament data loaded. Please go to the Overview page, select tournaments, and click 'Load Data' before training.")
+        st.error("No tournament data loaded. Please go to the Overview page and load data first.")
     else:
         st.success(f"**{len(st.session_state['pooled_matches'])}** matches are loaded and ready for training.")
 
         if st.button("Train New AI Model (in Background)", type="primary"):
             try:
-                with st.spinner("Sending training job to the kitchen..."):
-                    task = train_ai_model_task.delay(st.session_state['pooled_matches'])
-                    st.session_state['last_task_id'] = task.id
-                st.success(f"✅ Training job sent successfully! Task ID: {task.id}")
-                st.info("You can monitor the status below.")
+                task = train_ai_model_task.delay(st.session_state['pooled_matches'])
+                st.session_state['monitoring_task_id'] = task.id
+                # Immediately rerun to start the monitoring process below
+                st.rerun()
             except Exception as e:
                 st.error("❌ Failed to send task to the queue.")
                 st.exception(e)
 
     st.markdown("---")
     
-    # --- SECTION 2: TASK MONITORING with Download Links ---
+    # --- SECTION 2: TASK MONITORING (with Auto-Polling) ---
     st.header("Task Monitoring")
-    task_id_input = st.text_input("Enter Task ID to check status:", value=st.session_state.get('last_task_id', ''))
 
-    if st.button("Check Status"):
-        if task_id_input:
-            try:
-                result = AsyncResult(task_id_input, app=celery_app)
-                
-                st.write(f"**Status for Task ID:** `{task_id_input}`")
-                if result.ready():
-                    if result.successful():
-                        st.success(f"**Status:** {result.state}")
-                        st.write("**Result:**")
-                        task_result = result.get()
-                        st.json(task_result)
+    # This is the new auto-polling logic
+    if 'monitoring_task_id' in st.session_state and st.session_state['monitoring_task_id']:
+        task_id = st.session_state['monitoring_task_id']
+        result = AsyncResult(task_id, app=celery_app)
+        
+        if result.ready():
+            # Task is finished, display the final result
+            st.success("✅ Task monitoring complete!")
+            st.write(f"**Final Status for Task ID:** `{task_id}`")
+            
+            if result.successful():
+                st.success(f"**Status:** {result.state}")
+                task_result = result.get()
+                st.json(task_result)
 
-                        # --- THIS SECTION DISPLAYS THE DOWNLOAD BUTTONS ---
-                        if 'download_urls' in task_result:
-                            st.subheader("Download Trained Model Files")
-                            model_url = task_result['download_urls'].get('model_url')
-                            assets_url = task_result['download_urls'].get('assets_url')
-                            
-                            if model_url and assets_url:
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    st.link_button("📥 Download draft_predictor.json", model_url)
-                                with col2:
-                                    st.link_button("📥 Download draft_assets.json", assets_url)
-                            else:
-                                st.error("Could not retrieve download URLs from the task result.")
-                        # --- END OF DOWNLOAD SECTION ---
-
+                if 'download_urls' in task_result:
+                    st.subheader("Download Trained Model Files")
+                    model_url = task_result['download_urls'].get('model_url')
+                    assets_url = task_result['download_urls'].get('assets_url')
+                    
+                    if model_url and assets_url:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.link_button("📥 Download draft_predictor.json", model_url)
+                        with col2:
+                            st.link_button("📥 Download draft_assets.json", assets_url)
                     else:
-                        st.error(f"**Status:** {result.state}")
-                        st.write("**Error Details:**")
-                        st.json(result.info)
-                else:
-                    st.info(f"**Status:** {result.state} (The job is still running or waiting in the queue...)")
-            except Exception as e:
-                st.error("❌ Could not check task status.")
-                st.exception(e)
+                        st.error("Could not retrieve download URLs from the task result.")
+            else:
+                st.error(f"**Status:** {result.state}")
+                st.write("**Error Details:**")
+                st.json(result.info)
+            
+            # Clear the monitoring state so it doesn't run forever
+            st.session_state['monitoring_task_id'] = None
+        
         else:
-            st.warning("Please enter a Task ID to check.")
+            # Task is still running, show a spinner and schedule a rerun
+            with st.spinner(f"Task {task_id} is {result.state}... Auto-refreshing in 10 seconds."):
+                time.sleep(10)
+            st.rerun()
+
+    else:
+        st.info("No active task is being monitored. Start a new training job to begin monitoring.")
+        # Allow manual checking as a fallback
+        manual_task_id = st.text_input("Or, enter a Task ID to check its status manually:")
+        if st.button("Check Manually"):
+            if manual_task_id:
+                st.session_state['monitoring_task_id'] = manual_task_id
+                st.rerun()
+            else:
+                st.warning("Please enter a Task ID.")
 
     st.markdown("---")
 
-    # --- SECTION 3: CONFIGURATION MANAGEMENT (Unchanged) ---
+    # --- SECTION 3: CONFIGURATION MANAGEMENT (UNCHANGED) ---
     st.header("Tournament Configuration Management")
     st.info("Select tournaments, preview their current configurations one-by-one, and download them as a single zip file.")
 
