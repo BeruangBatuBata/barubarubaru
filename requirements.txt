@@ -9,3 +9,5 @@ joblib
 scikit-learn
 st-pages
 plotly
+celery
+redis
