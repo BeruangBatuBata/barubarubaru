@@ -74,18 +74,19 @@ def run_deeper_analysis_task(
     
     def run_simulation(forced_scenario_dict):
         """Helper to run the correct simulation type with updated scenarios."""
-        # Convert frozensets back to dicts for Celery compatibility
-        serializable_brackets = [dict(b) for b in brackets]
+        # The 'brackets' argument arrives as a tuple of tuples.
+        # We must convert it back to a list of dicts for the simulation functions.
+        unhashed_brackets = [dict(b) for b in brackets] # <--- CORRECTED LOGIC
         
         if is_group_sim:
             return run_monte_carlo_simulation_groups(
                 groups, [json.loads(m) for m in played_json], dict(current_wins), dict(current_diff),
-                list(unplayed_tuples), forced_scenario_dict, serializable_brackets, n_sim
+                list(unplayed_tuples), forced_scenario_dict, unhashed_brackets, n_sim
             )
         else:
             return run_monte_carlo_simulation(
                 list(teams), [json.loads(m) for m in played_json], dict(current_wins), dict(current_diff),
-                list(unplayed_tuples), forced_scenario_dict, serializable_brackets, n_sim
+                list(unplayed_tuples), forced_scenario_dict, unhashed_brackets, n_sim
             )
 
     # --- 1. "Win and In" Scenario ---
