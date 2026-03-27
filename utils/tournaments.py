@@ -1,10 +1,8 @@
 ALL_TOURNAMENTS = {
-    'MPL ID Season 14': {'path': 'MPL/Indonesia/Season_14', 'region': 'Indonesia', 'year': 2024, 'live': False, 'league': 'MPL Indonesia', 'split': '2024 Split 2'},
     'MPL PH Season 13': {'path': 'MPL/Philippines/Season_13', 'region': 'Philippines', 'year': 2024, 'live': False, 'league': 'MPL Philippines', 'split': '2024 Split 1'},
     'MSC 2024': {'path': 'MSC/2024', 'region': 'International', 'year': 2024, 'live': False, 'league': 'MSC (Mid-Season Cup)', 'split': '2024 Split 2'},
-    'MPL ID Season 15': {'path': 'MPL/Indonesia/Season_15', 'region': 'Indonesia', 'year': 2025, 'live': False, 'league': 'MPL Indonesia', 'split': '2025 Split 1'},
     'MPL PH Season 15': {'path': 'MPL/Philippines/Season_15', 'region': 'Philippines', 'year': 2025, 'live': False, 'league': 'MPL Philippines', 'split': '2025 Split 1'},
-    'MPL ID Season 16': {'path': 'MPL/Indonesia/Season_16', 'region': 'Indonesia', 'year': 2025, 'live': True, 'league': 'MPL Indonesia', 'split': '2025 Split 2'},
+    'MPL ID Season 17': {'path': 'MPL/Indonesia/Season_17', 'region': 'Indonesia', 'year': 2026, 'live': True, 'league': 'MPL Indonesia', 'split': '2026 Split 1'},
     'MPL PH Season 16': {'path': 'MPL/Philippines/Season_16', 'region': 'Philippines', 'year': 2025, 'live': True, 'league': 'MPL Philippines', 'split': '2025 Split 2'},
     'MPL MY Season 16': {'path': 'MPL/Malaysia/Season_16', 'region': 'Malaysia', 'year': 2025, 'live': True, 'league': 'MPL Malaysia', 'split': '2025 Split 2'},
     'VMC 2025 Winter': {'path': 'Vietnam_MLBB_Championship/2025/Winter', 'region': 'Vietnam', 'year': 2025, 'live': True, 'league': 'VMC (Vietnam)', 'split': '2025 Split 1'},
